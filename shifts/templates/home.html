@@ -442,7 +442,16 @@
                                 {% empty %}
                                 <option value="1">Mock Cinema</option>
                                 {% endfor %}
+                                <option value="external">External cinema file</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="fileUploadGroup" style="display: none;">
+                        <label>Upload Showtimes (.csv, .json)</label>
+                        <div class="participant-manager" style="border-style: dashed; border-width: 2px;">
+                            <input type="file" id="cinemaFile" accept=".csv,.json" style="margin-bottom: 0.5rem; font-size: 0.8rem;">
+                            <div id="uploadStatus" style="font-size: 0.75rem; color: var(--text-muted);"></div>
                         </div>
                     </div>
 
@@ -761,8 +770,92 @@
             });
         }
 
-        cinemaSelect.addEventListener('change', loadMovies);
-        dateInput.addEventListener('change', loadMovies);
+        cinemaSelect.addEventListener('change', () => {
+            if (cinemaSelect.value === 'external') {
+                document.getElementById('fileUploadGroup').style.display = 'block';
+                movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">Please upload a file to see movies...</div>';
+            } else {
+                document.getElementById('fileUploadGroup').style.display = 'none';
+                loadMovies();
+            }
+        });
+
+        document.getElementById('cinemaFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const date = dateInput.value;
+            if (!date) {
+                alert("Please select a date first.");
+                return;
+            }
+
+            const status = document.getElementById('uploadStatus');
+            status.textContent = 'Uploading and parsing... ⏳';
+            status.style.color = 'var(--accent)';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('date', date);
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            try {
+                const res = await fetch('/api/upload-cinema/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.showtimes) {
+                    status.textContent = `Success! Loaded movies from ${data.cinema_name}.`;
+                    status.style.color = '#4ade80';
+                    
+                    // Render the movies from the response
+                    renderMovies(data.showtimes);
+                } else {
+                    status.textContent = 'Error: ' + (data.error || 'Unknown error');
+                    status.style.color = 'var(--secondary)';
+                }
+            } catch (err) {
+                status.textContent = 'Upload failed.';
+                status.style.color = 'var(--secondary)';
+            }
+        });
+
+        function renderMovies(showtimes) {
+             if (showtimes && showtimes.length > 0) {
+                movieList.innerHTML = '';
+                const uniqueMovies = {};
+                showtimes.forEach(st => {
+                    if (!uniqueMovies[st.movie_id]) {
+                        uniqueMovies[st.movie_id] = { id: st.movie_id, title: st.movie_title, duration: st.duration };
+                    }
+                });
+
+                Object.values(uniqueMovies).forEach(m => {
+                    const card = document.createElement('div');
+                    card.className = 'movie-card';
+                    card.dataset.id = m.id;
+                    card.innerHTML = `
+                        <div class="star-btn" onclick="toggleMustSee(event, '${m.id}')" title="Mark as Must-See">⭐</div>
+                        <h4>${m.title}</h4>
+                        <div class="meta">⏱️ ${m.duration}m</div>
+                        <div class="participant-badges" id="badges-${m.id}"></div>
+                    `;
+                    card.onclick = () => toggleMovieForActivePerson(m.id);
+                    movieList.appendChild(card);
+                });
+                updateMovieGrid();
+            } else {
+                movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">No movies found in file.</div>';
+            }
+        }
+
+        dateInput.addEventListener('change', () => {
+            if (cinemaSelect.value !== 'external') {
+                loadMovies();
+            }
+        });
 
         // 3. Overlap Logic
         document.getElementById('allowOverlap').addEventListener('change', (e) => {
@@ -787,11 +880,13 @@
 
         // 5. Initial Load (Mock)
         if (cinemaSelect.value && dateInput.value) {
-            loadMovies();
+            if (cinemaSelect.value !== 'external') loadMovies();
         } else {
             // Pick mock cinema by default if empty
-            if (!cinemaSelect.value) cinemaSelect.value = "1";
-            loadMovies();
+            if (!cinemaSelect.value) {
+                 cinemaSelect.value = "1";
+                 loadMovies();
+            }
         }
     </script>
 </body>

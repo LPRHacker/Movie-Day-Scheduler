@@ -14,4 +14,5 @@ urlpatterns = [
     path('password_change/', views.change_password, name='change_password'),
     path('scrape/', views.trigger_scraper, name='trigger_scraper'),
     path('list-shows/', views.ListShowsView.as_view(), name='list_shows'),
+    path('api/upload-cinema/', views.UploadCinemaFileView.as_view(), name='upload_cinema'),
 ]

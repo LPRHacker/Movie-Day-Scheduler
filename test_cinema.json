@@ -1,0 +1,493 @@
+[
+    {
+        "movie_title": "Inside Out 2",
+        "time": [
+            "10:30",
+            "13:00"
+        ],
+        "duration_minutes": 95
+    },
+    {
+        "movie_title": "Despicable Me 4",
+        "time": [
+            "10:30",
+            "10:45",
+            "15:15",
+            "15:30"
+        ],
+        "duration_minutes": 90
+    },
+    {
+        "movie_title": "Moana 2",
+        "time": [
+            "09:15",
+            "09:30",
+            "10:45",
+            "11:45",
+            "12:00",
+            "16:30",
+            "16:45"
+        ],
+        "duration_minutes": 100
+    },
+    {
+        "movie_title": "Sonic the Hedgehog 3",
+        "time": [
+            "10:00",
+            "13:00"
+        ],
+        "duration_minutes": 110
+    },
+    {
+        "movie_title": "Mufasa: The Lion King",
+        "time": [
+            "09:45",
+            "10:45",
+            "11:30",
+            "12:30"
+        ],
+        "duration_minutes": 118
+    },
+    {
+        "movie_title": "The Garfield Movie",
+        "time": [
+            "09:15",
+            "13:15",
+            "14:30",
+            "15:15",
+            "16:00",
+            "16:45"
+        ],
+        "duration_minutes": 101
+    },
+    {
+        "movie_title": "Kung Fu Panda 4",
+        "time": [
+            "08:15",
+            "16:30"
+        ],
+        "duration_minutes": 94
+    },
+    {
+        "movie_title": "Paddington in Peru",
+        "time": [
+            "10:45",
+            "11:00",
+            "12:00",
+            "14:30",
+            "15:00"
+        ],
+        "duration_minutes": 105
+    },
+    {
+        "movie_title": "Wonka",
+        "time": [
+            "08:00",
+            "08:30",
+            "09:00",
+            "10:15",
+            "14:30"
+        ],
+        "duration_minutes": 116
+    },
+    {
+        "movie_title": "Wish",
+        "time": [
+            "08:15",
+            "08:30",
+            "11:00",
+            "11:15",
+            "13:15",
+            "14:00",
+            "14:45"
+        ],
+        "duration_minutes": 95
+    },
+    {
+        "movie_title": "Elemental",
+        "time": [
+            "08:00",
+            "08:45",
+            "10:00",
+            "11:45",
+            "14:45"
+        ],
+        "duration_minutes": 101
+    },
+    {
+        "movie_title": "Spider-Man: Beyond the Spider-Verse",
+        "time": [
+            "09:15",
+            "12:00",
+            "12:30"
+        ],
+        "duration_minutes": 140
+    },
+    {
+        "movie_title": "Smile 2",
+        "time": [
+            "19:00",
+            "19:30",
+            "20:00",
+            "20:15",
+            "21:00",
+            "21:15",
+            "23:00"
+        ],
+        "duration_minutes": 127
+    },
+    {
+        "movie_title": "Terrifier 3",
+        "time": [
+            "18:30",
+            "21:30",
+            "23:00",
+            "23:15"
+        ],
+        "duration_minutes": 125
+    },
+    {
+        "movie_title": "Nosferatu",
+        "time": [
+            "19:00",
+            "21:00",
+            "22:00"
+        ],
+        "duration_minutes": 132
+    },
+    {
+        "movie_title": "A Quiet Place: Day One",
+        "time": [
+            "19:00",
+            "19:45",
+            "20:45",
+            "21:00",
+            "23:00"
+        ],
+        "duration_minutes": 99
+    },
+    {
+        "movie_title": "The Watchers",
+        "time": [
+            "18:15",
+            "18:45",
+            "19:00",
+            "20:30",
+            "21:00",
+            "22:00"
+        ],
+        "duration_minutes": 102
+    },
+    {
+        "movie_title": "Longlegs",
+        "time": [
+            "18:15",
+            "19:00"
+        ],
+        "duration_minutes": 101
+    },
+    {
+        "movie_title": "MaXXXine",
+        "time": [
+            "22:30",
+            "22:45",
+            "23:30"
+        ],
+        "duration_minutes": 103
+    },
+    {
+        "movie_title": "Trap",
+        "time": [
+            "21:45",
+            "22:45"
+        ],
+        "duration_minutes": 105
+    },
+    {
+        "movie_title": "Speak No Evil",
+        "time": [
+            "19:00",
+            "19:30",
+            "20:30"
+        ],
+        "duration_minutes": 110
+    },
+    {
+        "movie_title": "Wolf Man",
+        "time": [
+            "22:00",
+            "23:15"
+        ],
+        "duration_minutes": 115
+    },
+    {
+        "movie_title": "Five Nights at Freddy's 2",
+        "time": [
+            "18:30",
+            "19:45",
+            "20:00",
+            "20:15",
+            "23:00",
+            "23:30"
+        ],
+        "duration_minutes": 110
+    },
+    {
+        "movie_title": "Saw XI",
+        "time": [
+            "18:15",
+            "18:30",
+            "19:00",
+            "19:45",
+            "23:15"
+        ],
+        "duration_minutes": 110
+    },
+    {
+        "movie_title": "Dune: Part Two",
+        "time": [
+            "13:30",
+            "14:45",
+            "18:15"
+        ],
+        "duration_minutes": 166
+    },
+    {
+        "movie_title": "The Batman 2",
+        "time": [
+            "08:00",
+            "15:00",
+            "20:30",
+            "23:00"
+        ],
+        "duration_minutes": 170
+    },
+    {
+        "movie_title": "Gladiator II",
+        "time": [
+            "12:30",
+            "17:00",
+            "18:00",
+            "19:45",
+            "23:00",
+            "23:15"
+        ],
+        "duration_minutes": 148
+    },
+    {
+        "movie_title": "Joker: Folie \u00e0 Deux",
+        "time": [
+            "08:45",
+            "12:45"
+        ],
+        "duration_minutes": 138
+    },
+    {
+        "movie_title": "A Complete Unknown",
+        "time": [
+            "18:45",
+            "22:00"
+        ],
+        "duration_minutes": 140
+    },
+    {
+        "movie_title": "The Apprentice",
+        "time": [
+            "09:00",
+            "13:30",
+            "16:15",
+            "17:30",
+            "21:15"
+        ],
+        "duration_minutes": 120
+    },
+    {
+        "movie_title": "Furiosa: A Mad Max Saga",
+        "time": [
+            "10:00",
+            "11:45",
+            "17:00",
+            "17:45",
+            "20:00",
+            "20:30",
+            "21:00"
+        ],
+        "duration_minutes": 148
+    },
+    {
+        "movie_title": "Deadpool & Wolverine",
+        "time": [
+            "08:45",
+            "09:30",
+            "20:00",
+            "21:30"
+        ],
+        "duration_minutes": 127
+    },
+    {
+        "movie_title": "The Fall Guy",
+        "time": [
+            "09:15",
+            "15:30",
+            "18:45"
+        ],
+        "duration_minutes": 126
+    },
+    {
+        "movie_title": "Twisters",
+        "time": [
+            "09:00",
+            "10:45"
+        ],
+        "duration_minutes": 122
+    },
+    {
+        "movie_title": "Kingdom of the Planet of the Apes",
+        "time": [
+            "08:30",
+            "18:15",
+            "20:30",
+            "22:15",
+            "22:30"
+        ],
+        "duration_minutes": 145
+    },
+    {
+        "movie_title": "Civil War",
+        "time": [
+            "10:45",
+            "13:45",
+            "16:00",
+            "16:15"
+        ],
+        "duration_minutes": 109
+    },
+    {
+        "movie_title": "The Ministry of Ungentlemanly Warfare",
+        "time": [
+            "10:45",
+            "12:30",
+            "15:30",
+            "17:45",
+            "21:15"
+        ],
+        "duration_minutes": 120
+    },
+    {
+        "movie_title": "Bikeriders",
+        "time": [
+            "12:00",
+            "13:00",
+            "14:30",
+            "16:15",
+            "23:15"
+        ],
+        "duration_minutes": 116
+    },
+    {
+        "movie_title": "Kraven the Hunter",
+        "time": [
+            "13:00",
+            "13:15",
+            "15:30",
+            "16:00",
+            "16:15",
+            "22:15",
+            "22:45"
+        ],
+        "duration_minutes": 127
+    },
+    {
+        "movie_title": "Red One",
+        "time": [
+            "22:00",
+            "22:30"
+        ],
+        "duration_minutes": 123
+    },
+    {
+        "movie_title": "Bad Boys: Ride or Die",
+        "time": [
+            "19:45",
+            "20:30",
+            "23:00"
+        ],
+        "duration_minutes": 115
+    },
+    {
+        "movie_title": "Fly Me to the Moon",
+        "time": [
+            "18:15",
+            "21:45"
+        ],
+        "duration_minutes": 132
+    },
+    {
+        "movie_title": "Argylle",
+        "time": [
+            "08:00",
+            "10:30",
+            "11:00"
+        ],
+        "duration_minutes": 139
+    },
+    {
+        "movie_title": "The Beekeeper",
+        "time": [
+            "13:30",
+            "20:30",
+            "21:45"
+        ],
+        "duration_minutes": 105
+    },
+    {
+        "movie_title": "Bob Marley: One Love",
+        "time": [
+            "09:30",
+            "12:30"
+        ],
+        "duration_minutes": 107
+    },
+    {
+        "movie_title": "Ghostbusters: Frozen Empire",
+        "time": [
+            "12:00",
+            "22:45"
+        ],
+        "duration_minutes": 115
+    },
+    {
+        "movie_title": "The Idea of You",
+        "time": [
+            "21:00",
+            "22:30"
+        ],
+        "duration_minutes": 115
+    },
+    {
+        "movie_title": "Hit Man",
+        "time": [
+            "08:30",
+            "13:00",
+            "20:00"
+        ],
+        "duration_minutes": 115
+    },
+    {
+        "movie_title": "Challengers",
+        "time": [
+            "17:15",
+            "18:00"
+        ],
+        "duration_minutes": 131
+    },
+    {
+        "movie_title": "It Ends with Us",
+        "time": [
+            "13:30",
+            "15:15",
+            "18:00"
+        ],
+        "duration_minutes": 130
+    }
+]

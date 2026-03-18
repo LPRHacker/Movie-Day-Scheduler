@@ -54,7 +54,10 @@ class HomeView(View):
                 if name not in existing_names:
                     persons.append(Person(name=name))
             
-            cinema = Cinema.objects.filter(id=cinema_id).first()
+            if cinema_id == 'external':
+                cinema = Cinema.objects.filter(name="External Cinema").first()
+            else:
+                cinema = Cinema.objects.filter(id=cinema_id).first()
             
             # The algorithm now needs to know which movies were selected
             # For now we'll just filter showtimes by these movies in the algorithm
@@ -324,3 +327,123 @@ def trigger_scraper(request):
     scraper = MockCinepolisScraper()
     scraper.fetch_and_save()
     return HttpResponse("Scraper Triggered and DB Populated!")
+
+
+import csv
+import json
+import io
+from django.core.files.uploadedfile import InMemoryUploadedFile
+
+class UploadCinemaFileView(View):
+    def post(self, request, *args, **kwargs):
+        from .models import Cinema, Movie, Showtime
+        from django.utils import timezone
+        import datetime
+        from django.utils.dateparse import parse_date
+
+        try:
+            date_str = request.POST.get('date')
+            uploaded_file = request.FILES.get('file')
+            
+            if not date_str or not uploaded_file:
+                return JsonResponse({'error': 'Missing parameters'}, status=400)
+                
+            target_date = parse_date(date_str)
+            if not target_date:
+                 return JsonResponse({'error': 'Invalid date'}, status=400)
+
+            # Get or create the External Cinema
+            cinema, _ = Cinema.objects.get_or_create(name="External Cinema")
+            
+            # Clear existing showtimes for this cinema and date
+            tz = timezone.get_current_timezone()
+            day_start = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(0, 0)), tz)
+            day_end = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(23, 59, 59)), tz)
+            Showtime.objects.filter(cinema=cinema, datetime__range=(day_start, day_end)).delete()
+
+            showtimes_to_create = []
+            
+            content = uploaded_file.read().decode('utf-8')
+            file_type = uploaded_file.name.split('.')[-1].lower()
+
+            raw_data = []
+            if file_type == 'csv':
+                reader = csv.DictReader(io.StringIO(content))
+                raw_data = list(reader)
+            elif file_type == 'json':
+                raw_data = json.loads(content)
+            else:
+                return JsonResponse({'error': 'Unsupported file format. Please use CSV or JSON.'}, status=400)
+
+            for item in raw_data:
+                title = item.get('movie_title') or item.get('title')
+                time_val = item.get('time') or item.get('showtime')
+                duration_val = item.get('duration_minutes') or item.get('duration') or 120
+                try:
+                    duration = int(duration_val)
+                except:
+                    duration = 120
+
+                if not title or not time_val:
+                    continue
+
+                movie, _ = Movie.objects.get_or_create(
+                    title=title.strip(), 
+                    defaults={'duration_minutes': duration}
+                )
+                
+                # Handle time as string (possibly comma-separated) or list
+                if isinstance(time_val, str):
+                    # For CSV support: split by comma if present
+                    if ',' in time_val:
+                        times_to_parse = [t.strip() for t in time_val.split(',')]
+                    else:
+                        times_to_parse = [time_val.strip()]
+                elif isinstance(time_val, list):
+                    times_to_parse = time_val
+                else:
+                    continue
+
+                for ts_raw in times_to_parse:
+                    ts = str(ts_raw).strip()
+                    if not ts: continue
+                    
+                    # Parse time (HH:MM or HH:MM:SS)
+                    try:
+                        if ts.count(':') == 1:
+                            time_obj = datetime.datetime.strptime(ts, '%H:%M').time()
+                        else:
+                            time_obj = datetime.datetime.strptime(ts, '%H:%M:%S').time()
+                        
+                        dt = timezone.make_aware(datetime.datetime.combine(target_date, time_obj), tz)
+                        
+                        showtimes_to_create.append(Showtime(
+                            movie=movie,
+                            cinema=cinema,
+                            datetime=dt
+                        ))
+                    except (ValueError, TypeError):
+                        continue
+
+            Showtime.objects.bulk_create(showtimes_to_create)
+
+            # Re-fetch to get real IDs
+            showtimes = Showtime.objects.filter(cinema=cinema, datetime__range=(day_start, day_end)).select_related('movie')
+            data = []
+            for st in showtimes:
+                localized_time = timezone.localtime(st.datetime)
+                data.append({
+                    'id': st.id,
+                    'movie_id': st.movie.id,
+                    'movie_title': st.movie.title,
+                    'time': localized_time.strftime('%H:%M'),
+                    'duration': st.movie.duration_minutes
+                })
+
+            data.sort(key=lambda x: x['time'])
+            return JsonResponse({'showtimes': data, 'cinema_id': cinema.id, 'cinema_name': cinema.name})
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'error': str(e)}, status=500)

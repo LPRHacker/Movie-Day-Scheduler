@@ -26,6 +26,34 @@
     ```
 2.  **Access App**: Open `http://127.0.0.1:8001/` in your browser.
 3.  **Populate Data**: Use the `🔍 View All Showtimes` link or the `/scrape/` endpoint to seed the mock cinema data.
+4.  **External Cinema File Guide**:
+    You can use your own showtimes by selecting **"External cinema file"** and uploading a `.csv` or `.json` file.
+    
+    ### Accepted Formats:
+    
+    **CSV**:
+    ```csv
+    movie_title,time,duration_minutes
+    "Dune: Part Two","07:00,15:00,19:00",166
+    "Kung Fu Panda 4","10:00,14:30,17:27,20:30",94
+    ```
+
+    **JSON**:
+    ```json
+    [
+      {
+        "movie_title": "Dune: Part Two",
+        "time": ["07:00", "15:00", "19:00"],
+        "duration_minutes": 166
+      },
+      {
+        "movie_title": "Kung Fu Panda 4",
+        "time": ["10:00", "14:30", "17:27", "20:30"],
+        "duration_minutes": 94
+      }
+    ]
+    ```
+    *Note: `time` can be a string (comma-separated for CSV) or an array (JSON). Values must be in `HH:MM` format. `duration_minutes` defaults to 120 if omitted.*
 
 ---
 **Movie Day, built upon [django-shift](https://github.com/mtribaldos/django-shift).**
