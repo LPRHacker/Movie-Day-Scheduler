@@ -1,4 +1,4 @@
-{% load l10n %}
+{% load l10n static %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -6,413 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Movie Day Scheduler</title>
-    <style>
-        :root {
-            --primary: #8a2be2;
-            --secondary: #ff1493;
-            --bg: #0f172a;
-            --surface: rgba(30, 41, 59, 0.7);
-            --text: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent: #00d2ff;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            background-image:
-                radial-gradient(at 0% 0%, rgba(138, 43, 226, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 0%, rgba(255, 20, 147, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(138, 43, 226, 0.15) 0px, transparent 50%),
-                radial-gradient(at 0% 100%, rgba(255, 20, 147, 0.15) 0px, transparent 50%);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 0;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 1000px;
-            margin: 2rem;
-            padding: 2.5rem;
-            background: var(--surface);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        h1 {
-            font-size: 3rem;
-            font-weight: 800;
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 2rem;
-            background: linear-gradient(135deg, var(--secondary), var(--primary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.05em;
-        }
-
-        .grid-layout {
-            display: grid;
-            grid-template-columns: 1fr 1.5fr;
-            gap: 2rem;
-        }
-
-        @media (max-width: 850px) {
-            .grid-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-
-        input[type="date"],
-        select,
-        input[type="range"],
-        input[type="text"] {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            color: var(--text);
-            font-size: 1rem;
-            font-family: inherit;
-            transition: all 0.3s ease;
-            box-sizing: border-box;
-        }
-
-        input:focus,
-        select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(138, 43, 226, 0.25);
-        }
-
-        /* Participant Pill List */
-        .participant-manager {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 1rem;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .participant-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .participant-pill {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(138, 43, 226, 0.2);
-            padding: 0.4rem 0.8rem;
-            border-radius: 100px;
-            font-size: 0.875rem;
-            border: 1px solid rgba(138, 43, 226, 0.3);
-            cursor: pointer;
-            transition: 0.2s;
-            user-select: none;
-        }
-
-        .participant-pill:hover {
-            background: rgba(138, 43, 226, 0.3);
-        }
-
-        .participant-pill .remove-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            font-size: 10px;
-            color: var(--text-muted);
-            transition: 0.2s;
-        }
-
-        .participant-pill .remove-btn:hover {
-            background: var(--secondary);
-            color: white;
-        }
-
-        .participant-pill.selected {
-            background: var(--primary);
-            border-color: var(--primary);
-            box-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
-        }
-
-        .add-participant {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .add-participant input {
-            padding: 0.5rem 0.75rem;
-        }
-
-        .add-btn {
-            padding: 0.5rem 1rem;
-            border-radius: 10px;
-            border: none;
-            background: var(--accent);
-            color: black;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        /* Movie Selection Grid */
-        .movie-selection {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 1rem;
-            max-height: 300px;
-            overflow-y: auto;
-            padding: 0.5rem;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 16px;
-        }
-
-        .movie-card {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 1rem;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            cursor: pointer;
-            transition: 0.2s;
-            position: relative;
-        }
-
-        .movie-card:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .movie-card.selected {
-            border-color: var(--primary);
-            background: rgba(138, 43, 226, 0.1);
-        }
-
-        .movie-card .participant-badges {
-            display: flex;
-            gap: 4px;
-            margin-top: 8px;
-            flex-wrap: wrap;
-        }
-
-        .movie-card .badge {
-            font-size: 0.6rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-muted);
-        }
-
-        .movie-card .badge.active {
-            background: var(--accent);
-            color: black;
-            font-weight: bold;
-        }
-
-        .movie-card h4 {
-            margin: 0 0 0.25rem 0;
-            font-size: 0.9rem;
-        }
-
-        .movie-card .meta {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .star-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            cursor: pointer;
-            z-index: 10;
-            font-size: 1.2rem;
-            opacity: 0.2;
-            transition: 0.2s;
-        }
-
-        .star-btn:hover {
-            opacity: 0.8 !important;
-            transform: scale(1.2);
-        }
-
-        /* Tree Flow Visualization */
-        .tree-flow-container {
-            margin-top: 3rem;
-            padding-top: 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            overflow-x: auto;
-        }
-
-        .graph-wrapper {
-            position: relative;
-            min-width: 800px;
-            padding: 2rem 0;
-        }
-
-        .person-row {
-            display: flex;
-            align-items: center;
-            height: 100px;
-            margin-bottom: 1rem;
-            position: relative;
-            border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
-        }
-
-        .person-label {
-            width: 100px;
-            flex-shrink: 0;
-            font-weight: 700;
-            font-size: 0.875rem;
-            color: var(--primary);
-        }
-
-        .timeline {
-            flex-grow: 1;
-            height: 100%;
-            position: relative;
-        }
-
-        .movie-node {
-            position: absolute;
-            background: linear-gradient(90deg, var(--secondary), var(--primary));
-            border-radius: 8px;
-            padding: 0.5rem;
-            font-size: 0.75rem;
-            color: white;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            z-index: 2;
-            transition: 0.3s;
-        }
-
-        .movie-node:hover {
-            transform: scale(1.05);
-            z-index: 10;
-        }
-
-        .movie-node .duration {
-            font-size: 0.65rem;
-            opacity: 0.8;
-            margin-top: 2px;
-        }
-
-        .connector {
-            position: absolute;
-            height: 2px;
-            background: rgba(255, 255, 255, 0.1);
-            z-index: 1;
-        }
-
-        .times-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-left: 100px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            padding-top: 0.5rem;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 1.25rem;
-            background: linear-gradient(135deg, var(--secondary), var(--primary));
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 1.25rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: 0.3s;
-            box-shadow: 0 10px 20px rgba(255, 20, 147, 0.3);
-            margin-top: 2rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(255, 20, 147, 0.4);
-        }
-
-        /* Toggle Button */
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 255, 255, 0.1);
-            transition: .4s;
-            border-radius: 24px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked+.slider {
-            background: var(--accent);
-        }
-
-        input:checked+.slider:before {
-            transform: translateX(20px);
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'shifts/css/style.css' %}">
 </head>
 
 <body>
@@ -425,6 +19,10 @@
             </a>
         </div>
 
+        <div class="print-btn" onclick="window.print()" title="Print Schedule">
+            🖨️
+        </div>
+
         <form method="POST" id="scheduleForm">
             {% csrf_token %}
 
@@ -433,18 +31,29 @@
                 <div class="config-pane">
                     <div class="form-group">
                         <label>1. When & Where</label>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
                             <input type="date" id="date" name="date" required value="{{ current_date }}">
-                            <select id="cinema" name="cinema" required>
-                                <option value="" disabled selected>Cinema</option>
+                            <select id="cinemaSelect" onchange="addCinemaTag()">
+                                <option value="" disabled selected>Add Cinema</option>
                                 {% for cinema in cinemas %}
                                 <option value="{{ cinema.id }}">{{ cinema.name }}</option>
-                                {% empty %}
-                                <option value="1">Mock Cinema</option>
                                 {% endfor %}
                                 <option value="external">External cinema file</option>
                             </select>
                         </div>
+                        <div id="selectedCinemas" class="participant-list">
+                            <!-- Cinema tags here -->
+                        </div>
+                        <input type="hidden" id="cinemasInput" name="cinemas" value="">
+                        <input type="hidden" id="transitsInput" name="transits" value="{}">
+                    </div>
+
+                    <div class="form-group" style="display: flex; align-items: center; gap: 1rem;">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="debugMode" name="debug_mode">
+                            <span class="slider"></span>
+                        </label>
+                        <span style="font-size: 0.875rem;">Enable Debug (Mock Data)</span>
                     </div>
 
                     <div class="form-group" id="fileUploadGroup" style="display: none;">
@@ -524,6 +133,32 @@
                 </div>
             </div>
 
+            <div class="form-group" style="padding: 1.5rem; border-radius: 16px; background: rgba(255, 50, 50, 0.05); margin-top: 1rem; border: 1px solid rgba(255, 50, 50, 0.1);">
+                <label>5. Individual Breaks & Quiet Time</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem; align-items: end;">
+                    <div class="form-group" style="margin-bottom:0">
+                        <label style="font-size:0.6rem">Start Time</label>
+                        <input type="text" id="breakStart" placeholder="HH:MM">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
+                        <label style="font-size:0.6rem">End Time</label>
+                        <input type="text" id="breakEnd" placeholder="HH:MM">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
+                        <label style="font-size:0.6rem">Strictness</label>
+                        <select id="breakStrictness">
+                            <option value="strict">Strict (No overlap)</option>
+                            <option value="flexible">Flexible (Allow 30m)</option>
+                        </select>
+                    </div>
+                    <button type="button" class="add-btn" onclick="addBreak()" style="background: var(--secondary); color: white; height: 38px;">Add Break</button>
+                </div>
+                <div id="breaksContainer" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+                    <!-- Breaks for active participant -->
+                </div>
+                <input type="hidden" name="breaks" id="breaksInput">
+            </div>
+
             <button type="submit" class="submit-btn" id="submitBtn">Generate Optimal Schedule ✨</button>
         </form>
 
@@ -540,11 +175,14 @@
                     <div class="person-label">{{ name }}</div>
                     <div class="timeline" id="timeline-{{ name }}">
                         {% for slot in path %}
-                        <div class="movie-node"
+                        <div class="movie-node {% if slot.type == 'break' %}break-node{% elif slot.type == 'transit' %}transit-node{% endif %}"
                             style="--offset: {{ slot.offset_pct|default:0|unlocalize }}%; --width: {{ slot.width_pct|default:0|unlocalize }}%; left: var(--offset); width: var(--width);"
-                            title="{{ slot.movie }} ({{ slot.time|date:'H:i' }} - {{ slot.end_time|date:'H:i' }})">
+                            title="{{ slot.movie }} at {{ slot.cinema|default:'-' }} ({{ slot.time|date:'H:i' }} - {{ slot.end_time|date:'H:i' }})">
                             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ slot.movie }}</span>
                             <span class="duration">⏱️ {{ slot.duration }}m</span>
+                            {% if slot.trailer and slot.type == 'movie' %}
+                            <a class="node-trailer" href="{{ slot.trailer }}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Watch trailer">▶ Trailer</a>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -571,9 +209,13 @@
         let participants = [];
         let activeParticipant = null;
         let preferences = {}; // { name: { movie_id: "normal"|"must" } }
+        let breaks = {}; // { name: [{ start, end, strictness }] }
+        let movieIdToTitle = {};
+        let selectedCinemas = []; // [ { id, name } ]
+        let transitTimes = {}; // { "id1-id2": minutes }
 
         // UI Elements
-        const cinemaSelect = document.getElementById('cinema');
+        const cinemaSelect = document.getElementById('cinemaSelect');
         const dateInput = document.getElementById('date');
         const movieList = document.getElementById('movieList');
         const participantList = document.getElementById('participantList');
@@ -581,108 +223,173 @@
         const newNameInput = document.getElementById('newName');
         const prefInput = document.getElementById('preferencesInput');
         const partsInput = document.getElementById('selectedParticipantsInput');
+        const cinemasInput = document.getElementById('cinemasInput');
+        const transitsInput = document.getElementById('transitsInput');
+        const breaksInput = document.getElementById('breaksInput');
+        const breaksContainer = document.getElementById('breaksContainer');
 
-        // Initial Load Order
-        // 1. Load context from server first
-        const initialPrefs = JSON.parse('{{ preferences_json|default:"{}"|escapejs }}');
-        if (Object.keys(initialPrefs).length > 0) {
-            preferences = initialPrefs;
-        }
+        const transitModal = document.getElementById('transitModal');
+        let pendingTransitPair = null;
 
-        // 2. Sync DOM (participants) and restore state
-        syncParticipantsFromDOM();
-        
-        // 3. Ensure hidden inputs are updated with the combined state
-        updateInputs();
-
-        // 1. Participant Management
+        // 1. Participant & State Management
         function syncParticipantsFromDOM() {
             const pills = Array.from(participantList.querySelectorAll('.participant-pill'));
             participants = pills.map(p => p.dataset.name);
-            
-            // Try to restore active participant from server context
-            const serverActive = "{{ active_p_name|default:'' }}";
-            let restored = false;
-            if (serverActive && participants.includes(serverActive)) {
-                 const pill = pills.find(p => p.dataset.name === serverActive);
-                 if (pill) {
-                     setActiveParticipant(pill);
-                     restored = true;
-                 }
-            }
-
-            if (participants.length > 0 && !restored && !activeParticipant) {
-                setActiveParticipant(pills[0]);
-            }
-            
-            // Initial overlap container visibility
-            if (document.getElementById('allowOverlap').checked) {
-                document.getElementById('scalerContainer').style.display = 'block';
-            }
-            
             updateInputs();
+            if (activeParticipant && participants.includes(activeParticipant)) {
+                renderBreaks();
+            }
         }
 
-        addPersonBtn.addEventListener('click', () => {
-            const name = newNameInput.value.trim();
-            if (name && !participants.includes(name)) {
-                participants.push(name);
-                const pill = document.createElement('div');
-                pill.className = 'participant-pill selected';
-                pill.innerHTML = `${name} <span class="remove-btn" onclick="removeParticipant(event, this)">✕</span>`;
-                pill.dataset.name = name;
-                pill.onclick = () => setActiveParticipant(pill);
-                participantList.appendChild(pill);
-                newNameInput.value = '';
-                if (!activeParticipant) setActiveParticipant(pill);
-                updateInputs();
-            }
-        });
-
-        function setActiveParticipant(el) {
-            document.querySelectorAll('.participant-pill').forEach(p => p.style.border = '1px solid rgba(138, 43, 226, 0.3)');
-            el.style.border = '2px solid var(--accent)';
-            activeParticipant = el.dataset.name;
+        function setActiveParticipant(name) {
+            document.querySelectorAll('.participant-pill').forEach(p => {
+                p.classList.toggle('selected', p.dataset.name === name);
+            });
+            activeParticipant = name;
+            document.getElementById('activePartHidden').value = name;
             updateMovieGrid();
-        }
-
-        function removeParticipant(event, btn) {
-            event.stopPropagation();
-            const pill = btn.parentElement;
-            const name = pill.dataset.name;
-            participants = participants.filter(p => p !== name);
-            delete preferences[name];
-            if (activeParticipant === name) {
-                activeParticipant = participants[0] || null;
-            }
-            pill.remove();
-            syncParticipantsFromDOM();
+            renderBreaks();
         }
 
         function updateInputs() {
             partsInput.value = JSON.stringify(participants);
             prefInput.value = JSON.stringify(preferences);
-            document.getElementById('activePartHidden').value = activeParticipant || "";
+            cinemasInput.value = selectedCinemas.map(c => c.id).join(',');
+            transitsInput.value = JSON.stringify(transitTimes);
+            breaksInput.value = JSON.stringify(breaks);
         }
 
-        // 2. Dynamic Movie loading
+        // 2. Cinema Management
+        function addCinemaTag() {
+            const id = cinemaSelect.value;
+            const name = cinemaSelect.options[cinemaSelect.selectedIndex].text;
+            if (!id || selectedCinemas.find(c => c.id == id)) return;
+
+            // Check if we need transit time
+            if (selectedCinemas.length > 0) {
+                showTransitPrompt(selectedCinemas[selectedCinemas.length - 1], { id, name });
+            }
+
+            selectedCinemas.push({ id, name });
+            
+            if (id === 'external') {
+                document.getElementById('fileUploadGroup').style.display = 'block';
+            }
+
+            renderCinemaTags();
+            loadMovies();
+            cinemaSelect.value = "";
+        }
+
+        function removeCinemaTag(id) {
+            selectedCinemas = selectedCinemas.filter(c => c.id != id);
+            if (id === 'external') {
+                document.getElementById('fileUploadGroup').style.display = 'none';
+            }
+            renderCinemaTags();
+            loadMovies();
+        }
+
+        function renderCinemaTags() {
+            const container = document.getElementById('selectedCinemas');
+            container.innerHTML = '';
+            selectedCinemas.forEach(c => {
+                const tag = document.createElement('div');
+                tag.className = 'participant-pill selected';
+                tag.style.background = 'var(--accent)';
+                tag.style.color = 'black';
+                tag.innerHTML = `${c.name} <span class="remove-btn" onclick="removeCinemaTag('${c.id}')">✕</span>`;
+                container.appendChild(tag);
+            });
+            updateInputs();
+        }
+
+        function showTransitPrompt(c1, c2) {
+            pendingTransitPair = [c1.id, c2.id];
+            document.getElementById('transitPromptText').innerText = `How many minutes to get from ${c1.name} to ${c2.name}?`;
+            transitModal.style.display = 'flex';
+        }
+
+        function closeTransitModal() { transitModal.style.display = 'none'; }
+        function saveTransit() {
+            const mins = parseInt(document.getElementById('transitMins').value) || 30;
+            const key = `${pendingTransitPair[0]}-${pendingTransitPair[1]}`;
+            transitTimes[key] = mins;
+            closeTransitModal();
+            updateInputs();
+        }
+
+        // 3. Breaks Management
+        function addBreak() {
+            if (!activeParticipant) { alert("Select a person first"); return; }
+            const start = document.getElementById('breakStart').value;
+            const end = document.getElementById('breakEnd').value;
+            const strictness = document.getElementById('breakStrictness').value;
+
+            if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(start) || !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(end)) {
+                alert("Use HH:MM format (24h)"); return;
+            }
+
+            if (!breaks[activeParticipant]) breaks[activeParticipant] = [];
+            breaks[activeParticipant].push({ start, end, strictness });
+            renderBreaks();
+            updateInputs();
+            document.getElementById('breakStart').value = "";
+            document.getElementById('breakEnd').value = "";
+        }
+
+        function removeBreak(index) {
+            breaks[activeParticipant].splice(index, 1);
+            renderBreaks();
+            updateInputs();
+        }
+
+        function renderBreaks() {
+            breaksContainer.innerHTML = '';
+            const pBreaks = breaks[activeParticipant] || [];
+            pBreaks.forEach((b, i) => {
+                const item = document.createElement('div');
+                item.className = 'break-item';
+                item.innerHTML = `<span>☕ ${b.start}-${b.end} (${b.strictness})</span><span class="remove-btn" onclick="removeBreak(${i})" style="cursor:pointer">✕</span>`;
+                breaksContainer.appendChild(item);
+            });
+        }
+
+        // 4. Movie API & Grid
+        // A "fallback" trailer is a generated search link (DuckDuckGo, or the
+        // legacy youtube.com/results) rather than a direct trailer URL.
+        function isFallbackTrailer(url) {
+            if (!url) return false;
+            return url.includes('duckduckgo.com') || url.includes('youtube.com/results');
+        }
+
         async function loadMovies() {
-            const cinema = cinemaSelect.value;
+            const cinemaIds = selectedCinemas.map(c => c.id).join(',');
             const date = dateInput.value;
-            if (!cinema || !date) return;
+            const debug = document.getElementById('debugMode').checked;
+            if (!cinemaIds || !date) {
+                movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">Select a cinema and date to see available movies...</div>';
+                return;
+            }
 
             movieList.innerHTML = '<div style="padding: 2rem; text-align: center; grid-column: 1/-1;">Loading movies... 🍿</div>';
 
             try {
-                const res = await fetch(`/api/showtimes/?cinema=${cinema}&date=${date}`);
+                const res = await fetch(`/api/showtimes/?cinema=${cinemaIds}&date=${date}&debug=${debug}`);
                 const data = await res.json();
 
                 if (data.showtimes && data.showtimes.length > 0) {
                     movieList.innerHTML = '';
                     const uniqueMovies = {};
                     data.showtimes.forEach(st => {
-                        if (!uniqueMovies[st.movie_id]) {
-                            uniqueMovies[st.movie_id] = { id: st.movie_id, title: st.movie_title, duration: st.duration };
+                        movieIdToTitle[st.movie_id] = st.movie_title;
+                        if (!uniqueMovies[st.movie_title]) {
+                            uniqueMovies[st.movie_title] = { 
+                                id: st.movie_id, 
+                                title: st.movie_title, 
+                                duration: st.duration,
+                                poster: st.poster || ""
+                            };
                         }
                     });
 
@@ -690,25 +397,71 @@
                         const card = document.createElement('div');
                         card.className = 'movie-card';
                         card.dataset.id = m.id;
+                        card.dataset.title = m.title;
+                        
+                        const posterHtml = m.poster ? `<img src="${m.poster}" class="movie-poster" loading="lazy">` : `<div class="movie-poster">🎬</div>`;
+                        const trailerHtml = m.trailer ? `<a class="trailer-btn" href="${m.trailer}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Watch trailer">▶</a>` : '';
                         card.innerHTML = `
-                            <div class="star-btn" onclick="toggleMustSee(event, '${m.id}')" title="Mark as Must-See">⭐</div>
+                            ${posterHtml}
+                            <div class="star-btn" onclick="toggleMustSee(event, '${m.id}', '${m.title}')" title="Mark as Must-See">⭐</div>
+                            ${trailerHtml}
                             <h4>${m.title}</h4>
                             <div class="meta">⏱️ ${m.duration}m</div>
                             <div class="participant-badges" id="badges-${m.id}"></div>
                         `;
-                        card.onclick = () => toggleMovieForActivePerson(m.id);
+                        card.onclick = () => toggleMovieForActivePerson(m.id, m.title);
                         movieList.appendChild(card);
+                        // Lazy-enrich movies missing a real poster/trailer
+                        if (!m.poster || (m.trailer && isFallbackTrailer(m.trailer))) {
+                            enrichMovieCard(m.id, card);
+                        }
                     });
                     updateMovieGrid();
                 } else {
-                    movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">No movies found. Try another date!</div>';
+                    movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">No movies found. Try another date or cinema!</div>';
                 }
             } catch (e) {
                 movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--secondary); grid-column: 1/-1;">Error connecting to cinema API.</div>';
             }
         }
 
-        function toggleMovieForActivePerson(movieId) {
+        // Toggle logic updated for Title matching (across cinemas)
+        // Lazy enrichment: fetch missing poster/trailer per movie (no API keys)
+        async function enrichMovieCard(movieId, card) {
+            try {
+                const res = await fetch(`/api/movie-meta/?id=${movieId}`);
+                const data = await res.json();
+                if (!data || data.error) return;
+                const posterEl = card.querySelector('.movie-poster');
+                if (data.poster && posterEl && posterEl.tagName !== 'IMG') {
+                    const img = document.createElement('img');
+                    img.className = 'movie-poster';
+                    img.src = data.poster;
+                    img.loading = 'lazy';
+                    card.insertBefore(img, posterEl);
+                    posterEl.remove();
+                } else if (data.poster && posterEl && posterEl.tagName === 'IMG' && !posterEl.src) {
+                    posterEl.src = data.poster;
+                }
+                let btn = card.querySelector('.trailer-btn');
+                if (data.trailer && !btn) {
+                    btn = document.createElement('a');
+                    btn.className = 'trailer-btn';
+                    btn.target = '_blank';
+                    btn.rel = 'noopener';
+                    btn.title = 'Watch trailer';
+                    btn.innerHTML = '▶';
+                    btn.onclick = (e) => e.stopPropagation();
+                    card.insertBefore(btn, card.querySelector('h4'));
+                }
+                // Upgrade a fallback search link to a real trailer link
+                if (btn && data.trailer && !isFallbackTrailer(data.trailer)) {
+                    btn.href = data.trailer;
+                }
+            } catch (e) { /* enrichment is best-effort */ }
+        }
+
+        function toggleMovieForActivePerson(movieId, title) {
             if (!activeParticipant) return;
             if (!preferences[activeParticipant]) preferences[activeParticipant] = {};
 
@@ -722,7 +475,7 @@
             updateInputs();
         }
 
-        function toggleMustSee(event, movieId) {
+        function toggleMustSee(event, movieId, title) {
             event.stopPropagation();
             if (!activeParticipant) return;
             if (!preferences[activeParticipant]) preferences[activeParticipant] = {};
@@ -739,156 +492,122 @@
 
         function updateMovieGrid() {
             document.querySelectorAll('.movie-card').forEach(card => {
-                const movieId = card.dataset.id;
-                const badgesContainer = card.querySelector('.participant-badges');
-                badgesContainer.innerHTML = '';
+                const mId = card.dataset.id;
+                const mTitle = card.dataset.title;
+                const mPref = (preferences[activeParticipant] || {})[mId];
+                
+                card.classList.toggle('selected', !!mPref);
+                const star = card.querySelector('.star-btn');
+                star.style.color = (mPref === "must") ? "gold" : "rgba(255,255,255,0.2)";
+                star.style.opacity = (mPref === "must") ? "1" : "0.5";
 
-                let isSelectedByActive = false;
-                let isMustSeeByActive = false;
-
+                const badgeContainer = card.querySelector('.participant-badges');
+                badgeContainer.innerHTML = '';
                 participants.forEach(p => {
-                    const status = preferences[p] && preferences[p][movieId];
-                    if (status) {
-                        const b = document.createElement('span');
-                        b.className = 'badge' + (p === activeParticipant ? ' active' : '');
-                        b.textContent = p.charAt(0) + (status === 'must' ? '★' : '');
-                        b.title = p + (status === 'must' ? ' (Must See)' : '');
-                        badgesContainer.appendChild(b);
-                        if (p === activeParticipant) {
-                            isSelectedByActive = true;
-                            if (status === 'must') isMustSeeByActive = true;
-                        }
+                    const pPref = (preferences[p] || {})[mId];
+                    if (pPref) {
+                        const badge = document.createElement('span');
+                        badge.className = `badge ${p === activeParticipant ? 'active' : ''}`;
+                        badge.textContent = p + (pPref === "must" ? "⭐" : "");
+                        badgeContainer.appendChild(badge);
                     }
                 });
-
-                card.classList.toggle('selected', isSelectedByActive);
-                const star = card.querySelector('.star-btn');
-                if (star) {
-                    star.style.opacity = isMustSeeByActive ? '1' : '0.2';
-                    star.style.filter = isMustSeeByActive ? 'drop-shadow(0 0 5px gold)' : 'none';
-                }
             });
         }
 
-        cinemaSelect.addEventListener('change', () => {
-            if (cinemaSelect.value === 'external') {
-                document.getElementById('fileUploadGroup').style.display = 'block';
-                movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">Please upload a file to see movies...</div>';
-            } else {
-                document.getElementById('fileUploadGroup').style.display = 'none';
-                loadMovies();
+        addPersonBtn.addEventListener('click', () => {
+            const name = newNameInput.value.trim();
+            if (name && !participants.includes(name)) {
+                participants.push(name);
+                const pill = document.createElement('div');
+                pill.className = 'participant-pill selected';
+                pill.innerHTML = `${name} <span class="remove-btn" onclick="removeParticipant(event, this)">✕</span>`;
+                pill.dataset.name = name;
+                pill.onclick = () => setActiveParticipant(name);
+                participantList.appendChild(pill);
+                newNameInput.value = '';
+                if (!activeParticipant) setActiveParticipant(name);
+                updateInputs();
             }
         });
 
-        document.getElementById('cinemaFile').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const date = dateInput.value;
-            if (!date) {
-                alert("Please select a date first.");
-                return;
-            }
-
-            const status = document.getElementById('uploadStatus');
-            status.textContent = 'Uploading and parsing... ⏳';
-            status.style.color = 'var(--accent)';
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('date', date);
-            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-            try {
-                const res = await fetch('/api/upload-cinema/', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-
-                if (data.showtimes) {
-                    status.textContent = `Success! Loaded movies from ${data.cinema_name}.`;
-                    status.style.color = '#4ade80';
-                    
-                    // Render the movies from the response
-                    renderMovies(data.showtimes);
-                } else {
-                    status.textContent = 'Error: ' + (data.error || 'Unknown error');
-                    status.style.color = 'var(--secondary)';
-                }
-            } catch (err) {
-                status.textContent = 'Upload failed.';
-                status.style.color = 'var(--secondary)';
-            }
-        });
-
-        function renderMovies(showtimes) {
-             if (showtimes && showtimes.length > 0) {
-                movieList.innerHTML = '';
-                const uniqueMovies = {};
-                showtimes.forEach(st => {
-                    if (!uniqueMovies[st.movie_id]) {
-                        uniqueMovies[st.movie_id] = { id: st.movie_id, title: st.movie_title, duration: st.duration };
-                    }
-                });
-
-                Object.values(uniqueMovies).forEach(m => {
-                    const card = document.createElement('div');
-                    card.className = 'movie-card';
-                    card.dataset.id = m.id;
-                    card.innerHTML = `
-                        <div class="star-btn" onclick="toggleMustSee(event, '${m.id}')" title="Mark as Must-See">⭐</div>
-                        <h4>${m.title}</h4>
-                        <div class="meta">⏱️ ${m.duration}m</div>
-                        <div class="participant-badges" id="badges-${m.id}"></div>
-                    `;
-                    card.onclick = () => toggleMovieForActivePerson(m.id);
-                    movieList.appendChild(card);
-                });
-                updateMovieGrid();
-            } else {
-                movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">No movies found in file.</div>';
-            }
+        function removeParticipant(event, btn) {
+            event.stopPropagation();
+            const pill = btn.parentElement;
+            const name = pill.dataset.name;
+            participants = participants.filter(p => p !== name);
+            delete preferences[name];
+            delete breaks[name];
+            if (activeParticipant === name) activeParticipant = participants[0] || null;
+            pill.remove();
+            syncParticipantsFromDOM();
+            if (activeParticipant) setActiveParticipant(activeParticipant);
         }
 
-        dateInput.addEventListener('change', () => {
-            if (cinemaSelect.value !== 'external') {
-                loadMovies();
-            }
+        // Handle Form Submit
+        document.getElementById('scheduleForm').addEventListener('submit', () => {
+            updateInputs();
+            document.getElementById('submitBtn').textContent = 'Optimizing Flow... 🍿';
         });
 
-        // 3. Overlap Logic
-        document.getElementById('allowOverlap').addEventListener('change', (e) => {
+        // Setup date change
+        dateInput.onchange = () => loadMovies();
+        document.getElementById('allowOverlap').onchange = (e) => {
             document.getElementById('scalerContainer').style.display = e.target.checked ? 'block' : 'none';
-        });
-
-        document.getElementById('overlapScaler').addEventListener('input', (e) => {
+        };
+        document.getElementById('overlapScaler').oninput = (e) => {
             document.getElementById('scalerValue').textContent = e.target.value;
-        });
+        };
 
-        // 4. Form Submit
-        document.getElementById('scheduleForm').addEventListener('submit', (e) => {
-            if (participants.length === 0) {
-                alert("Add at least one participant!");
-                e.preventDefault();
-                return;
+        // Initialize state from existing pills if any
+        window.onload = () => {
+            // Restore Cinemas
+            const initCinemas = JSON.parse('{{ selected_cinemas_json|default:"[]"|escapejs }}');
+            if (initCinemas.length > 0) {
+                selectedCinemas = initCinemas;
+                renderCinemaTags();
+                if (selectedCinemas.some(c => c.id === 'external')) {
+                    document.getElementById('fileUploadGroup').style.display = 'block';
+                }
             }
-            const btn = document.getElementById('submitBtn');
-            btn.textContent = 'Optimizing Flow... 🍿';
-            btn.style.opacity = '0.8';
-        });
 
-        // 5. Initial Load (Mock)
-        if (cinemaSelect.value && dateInput.value) {
-            if (cinemaSelect.value !== 'external') loadMovies();
-        } else {
-            // Pick mock cinema by default if empty
-            if (!cinemaSelect.value) {
-                 cinemaSelect.value = "1";
-                 loadMovies();
+            // Restore Transits
+            const initTransits = JSON.parse('{{ transits_json|default:"{}"|escapejs }}');
+            transitTimes = initTransits;
+
+            // Restore Preferences
+            const initPrefs = JSON.parse('{{ preferences_json|default:"{}"|escapejs }}');
+            preferences = initPrefs;
+
+            // Restore Breaks
+            const initBreaks = JSON.parse('{{ breaks_json|default:"{}"|escapejs }}');
+            breaks = initBreaks;
+
+            syncParticipantsFromDOM();
+            
+            const firstPill = participantList.querySelector('.participant-pill');
+            if (firstPill) {
+                setActiveParticipant(firstPill.dataset.name);
             }
-        }
+
+            if (selectedCinemas.length > 0) {
+                loadMovies();
+            }
+        };
+
     </script>
+    <div id="transitModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0">🚗 Transit Time</h3>
+            <p id="transitPromptText" style="font-size:0.9rem; color:var(--text-muted)"></p>
+            <input type="number" id="transitMins" placeholder="Minutes..." value="30" 
+                style="background: rgba(0,0,0,0.5); border:1px solid var(--primary); color:white; padding: 0.5rem; width:100%; border-radius:8px;">
+            <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">
+                <button type="button" class="add-btn" style="background:rgba(255,255,255,0.1); color:white" onclick="closeTransitModal()">Skip</button>
+                <button type="button" class="add-btn" onclick="saveTransit()">Save</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

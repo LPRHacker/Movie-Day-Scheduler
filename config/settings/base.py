@@ -47,7 +47,13 @@ ADMINS = (
 # ------------------------------------------------------------------------------
 # Hosts/domain names that are valid for this site
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1', 
+    'http://127.0.0.1:8000', 
+    'http://localhost', 
+    'http://localhost:8000'
+]
 
 
 # FIXTURE CONFIGURATION
@@ -153,7 +159,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # GENERAL CONFIGURATION
 # ------------------------------------------------------------------------------
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#time-zone
-TIME_ZONE = 'Europe/Madrid'
+TIME_ZONE = 'Asia/Jerusalem'
 
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#language-code
 LANGUAGE_CODE = 'en-us'
@@ -196,4 +202,3 @@ STATICFILES_FINDERS = (
 
 # Shift app setup
 import datetime
-

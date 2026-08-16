@@ -13,12 +13,19 @@ class Movie(models.Model):
     imdb_id = models.CharField(max_length=50, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     duration_minutes = models.PositiveIntegerField(default=120)
+    poster_url = models.URLField(blank=True, null=True)
+    trailer_url = models.URLField(blank=True, null=True)
+    # Page on the cinema site for this movie (used to enrich poster/trailer)
+    page_url = models.URLField(blank=True, null=True)
+    # Whether enrichment (poster/trailer lookup) has already been attempted
+    meta_checked = models.BooleanField(default=False)
     
     def __str__(self):
         return self.title
 
 class Cinema(models.Model):
     name = models.CharField(max_length=100)
+    location_id = models.CharField(max_length=50, blank=True, null=True)
     url = models.URLField(blank=True, null=True)
 
     def __str__(self):

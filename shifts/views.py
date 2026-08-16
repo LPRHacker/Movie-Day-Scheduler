@@ -2,29 +2,32 @@ from django.shortcuts import render
 from django.views import View
 from django.utils.dateparse import parse_date
 import datetime
+import json
 from .models import Cinema, Preference, Person, Showtime, Movie
 from .algorithm import generate_schedule
+from django.utils import timezone
+from django.http import JsonResponse, HttpResponse
 
 class HomeView(View):
     def get(self, request, *args, **kwargs):
         context = {
-            'cinemas': Cinema.objects.all(),
-            'preferences': Preference.objects.all(),
+            'cinemas': Cinema.objects.all().order_by('name'),
             'current_date': datetime.date.today().isoformat()
         }
         return render(request, "home.html", context)
 
     def post(self, request, *args, **kwargs):
-        # Extract form data
-        import json
-        
         target_date_str = request.POST.get('date')
-        cinema_id = request.POST.get('cinema')
+        cinema_ids_raw = request.POST.get('cinemas', '') 
+        cinema_ids = [c for c in cinema_ids_raw.split(',') if c] if cinema_ids_raw else []
+        
         allow_overlap = request.POST.get('allow_overlap') == 'on'
         overlap_scaler = int(request.POST.get('overlap_scaler', 30))
         active_p_name = request.POST.get('active_participant_hidden', '')
         pref_ids_raw = request.POST.get('preferences', '{}')
         participants_raw = request.POST.get('selected_participants', '[]')
+        breaks_raw = request.POST.get('breaks', '{}')
+        transits_raw = request.POST.get('transits', '{}')
         
         try:
             pref_ids = json.loads(pref_ids_raw) if pref_ids_raw else {}
@@ -35,415 +38,253 @@ class HomeView(View):
             participant_names = json.loads(participants_raw) if participants_raw else []
         except:
             participant_names = []
-            
-        print(f"DEBUG POST: active={active_p_name}, prefs_count={len(pref_ids)}, persons_count={len(participant_names)}")
+
+        try:
+            person_breaks = json.loads(breaks_raw) if breaks_raw else {}
+        except:
+            person_breaks = {}
+
+        try:
+            transit_times = json.loads(transits_raw) if transits_raw else {}
+        except:
+            transit_times = {}
 
         target_date = parse_date(target_date_str) if target_date_str else datetime.date.today()
-        
-        print(f"DEBUG POST: date={target_date_str}, cinema={cinema_id}, overlap={allow_overlap}, scaler={overlap_scaler}")
-        print(f"DEBUG PREFS: {pref_ids}")
-        print(f"DEBUG PERSONS: {participant_names}")
-        
-        # In a real scenario we'd extract users from preferences
+        print(f"DEBUG POST: cinemas={cinema_ids}, date={target_date}")
+
+        persons = []
         if participant_names:
-            # Filter participants who were selected
             persons = list(Person.objects.filter(name__in=participant_names))
-            # If some people aren't in DB, create/mock them for the algorithm
             existing_names = [p.name for p in persons]
             for name in participant_names:
                 if name not in existing_names:
                     persons.append(Person(name=name))
             
-            if cinema_id == 'external':
-                cinema = Cinema.objects.filter(name="External Cinema").first()
-            else:
-                cinema = Cinema.objects.filter(id=cinema_id).first()
+            cinemas = list(Cinema.objects.filter(id__in=cinema_ids))
             
-            # The algorithm now needs to know which movies were selected
-            # For now we'll just filter showtimes by these movies in the algorithm
-            # (I'll need to pass selected_movie_ids to generate_schedule or filter Showtime query)
+            schedule = generate_schedule(
+                persons=persons, 
+                target_date=target_date, 
+                cinemas=cinemas,
+                allow_overlap=allow_overlap,
+                max_overlap_minutes=overlap_scaler,
+                movie_ids=pref_ids,
+                breaks=person_breaks,
+                transit_times=transit_times
+            )
         else:
-            persons = []
-            cinema = None
-            
-        # Call algorithm
-        schedule = generate_schedule(
-            persons=persons, 
-            target_date=target_date, 
-            cinema=cinema,
-            allow_overlap=allow_overlap,
-            max_overlap_minutes=overlap_scaler,
-            movie_ids=pref_ids
-        )
-        
-        # If no DB objects, populate with mock data for visuals
-        if not persons:
-            now = datetime.datetime.now()
-            s1 = {
-                "id": 1,
-                "time": now.replace(hour=19, minute=0, second=0, microsecond=0),
-                "end_time": now.replace(hour=21, minute=0, second=0, microsecond=0),
-                "duration": 120,
-                "movie": "Dune: Part Two",
-                "attendees": ["Alice", "Bob"]
-            }
-            s2 = {
-                "id": 2,
-                "time": now.replace(hour=20, minute=30, second=0, microsecond=0),
-                "end_time": now.replace(hour=22, minute=0, second=0, microsecond=0),
-                "duration": 90,
-                "movie": "Kung Fu Panda 4",
-                "attendees": ["Charlie"]
-            }
-            s3 = {
-                "id": 3,
-                "time": now.replace(hour=21, minute=30, second=0, microsecond=0),
-                "end_time": now.replace(hour=23, minute=30, second=0, microsecond=0),
-                "duration": 120,
-                "movie": "The Batman",
-                "attendees": ["Alice", "Bob", "Charlie"]
-            }
-            schedule = {
-                "slots": [s1, s2, s3],
-                "person_paths": {
-                    "Alice": [s1, s3],
-                    "Bob": [s1, s3],
-                    "Charlie": [s2, s3]
-                }
-            }
+            schedule = None
 
-        # Post-process schedule for visualization (Tree Flow)
-        # We'll normalize times between 10 AM and Midnight (14 hours)
+        # Post-process for visualization
         day_start = datetime.datetime.combine(target_date, datetime.time(10, 0))
         day_end = datetime.datetime.combine(target_date, datetime.time(23, 59))
         day_duration_mins = (day_end - day_start).total_seconds() / 60
 
-        def process_path(path):
+        from .scrapers import trailer_search_url
+
+        def process_path(path, trailer_map):
             processed = []
             for slot in path:
-                # Ensure time is datetime
                 st_time = slot['time']
-                if isinstance(st_time, str):
-                    st_time = datetime.datetime.fromisoformat(st_time)
-                
-                offset_mins = (st_time.replace(tzinfo=None) - day_start.replace(tzinfo=None)).total_seconds() / 60
+                if isinstance(st_time, str): st_time = datetime.datetime.fromisoformat(st_time)
+                # Make naive for comparison
+                st_time = st_time.replace(tzinfo=None) if st_time.tzinfo else st_time
+                offset_mins = (st_time - day_start).total_seconds() / 60
                 offset_pct = max(0, min(100, (offset_mins / day_duration_mins) * 100))
                 width_pct = max(1, min(100, (slot['duration'] / day_duration_mins) * 100))
                 
                 new_slot = slot.copy()
                 new_slot['offset_pct'] = offset_pct
                 new_slot['width_pct'] = width_pct
+                # Attach trailer link (fallback: trailer search)
+                if new_slot.get('type') == 'movie' and not new_slot.get('trailer'):
+                    title = new_slot.get('movie', '')
+                    new_slot['trailer'] = trailer_map.get(title) or trailer_search_url(title)
                 processed.append(new_slot)
             return processed
 
         if schedule and 'person_paths' in schedule:
+            # Build title -> trailer map for timeline nodes
+            trailer_by_title = {}
+            titles = set()
+            for path in schedule['person_paths'].values():
+                for slot in path:
+                    if slot.get('type') == 'movie':
+                        titles.add(slot.get('movie'))
+            for m in Movie.objects.filter(title__in=titles):
+                trailer_by_title[m.title] = m.trailer_url or trailer_search_url(m.title)
+
             new_paths = {}
             for person, path in schedule['person_paths'].items():
-                new_paths[person] = process_path(path)
+                new_paths[person] = process_path(path, trailer_by_title)
             schedule['person_paths'] = new_paths
 
+        # Use a dictionary or more careful filtering to keep name and id
+        selected_objs = []
+        for cid in cinema_ids:
+            if cid == 'external':
+                selected_objs.append({'id': 'external', 'name': 'External Cinema'})
+            else:
+                c = Cinema.objects.filter(id=cid).first()
+                if c:
+                    selected_objs.append({'id': str(c.id), 'name': c.name})
+
         context = {
-            'cinemas': Cinema.objects.all(),
-            'preferences': Preference.objects.all(),
-            'persons': Person.objects.all(),
+            'cinemas': Cinema.objects.all().order_by('name'),
             'current_date': target_date_str,
+            'selected_cinemas_json': json.dumps(selected_objs),
             'participant_names': participant_names,
             'preferences_json': json.dumps(pref_ids),
+            'breaks_json': json.dumps(person_breaks),
+            'transits_json': json.dumps(transit_times),
             'allow_overlap': allow_overlap,
             'overlap_scaler': overlap_scaler,
             'active_p_name': active_p_name,
             'schedule': schedule
         }
-        
         return render(request, "home.html", context)
 
-class ListShowsView(View):
-    def get(self, request, *args, **kwargs):
-        from django.utils import timezone
+class GetShowtimesView(View):
+    def get(self, request):
+        from .scrapers import get_scraper, trailer_search_url
+        cinema_ids_raw = request.GET.get('cinema', '')
+        date_str = request.GET.get('date', '')
+        debug = request.GET.get('debug') == 'true'
         
-        cinema_id = request.GET.get('cinema', '1')
-        date_str = request.GET.get('date', datetime.date.today().isoformat())
+        if not cinema_ids_raw or not date_str:
+            return JsonResponse({'error': 'Missing parameters'}, status=400)
+            
+        cinema_ids = [cid.strip() for cid in cinema_ids_raw.split(',') if cid.strip()]
         target_date = parse_date(date_str) or datetime.date.today()
         
-        try:
-            c_id = int(cinema_id)
-        except:
-            c_id = 1
+        results = []
+        for cid in cinema_ids:
+            if cid == 'external':
+                cinema = Cinema.objects.filter(name="External Cinema").first()
+            else:
+                try:
+                    cinema = Cinema.objects.get(id=cid)
+                except:
+                    continue
             
-        cinema = Cinema.objects.filter(id=c_id).first()
-        if not cinema:
-            cinema, _ = Cinema.objects.get_or_create(id=c_id, defaults={'name': f"Mock Cinema {c_id}"})
+            if not cinema: continue
 
-        tz = timezone.get_current_timezone()
-        day_start = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(0, 0)), tz)
-        day_end = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(23, 59, 59)), tz)
-        
-        showtimes = Showtime.objects.filter(
-            cinema=cinema,
-            datetime__range=(day_start, day_end)
-        ).select_related('movie').order_by('movie__title', 'datetime')
-        
-        # Group by movie
-        grouped_shows = {}
-        for st in showtimes:
-            m_title = st.movie.title
-            if m_title not in grouped_shows:
-                grouped_shows[m_title] = []
-            grouped_shows[m_title].append(timezone.localtime(st.datetime))
+            tz = timezone.get_current_timezone()
+            day_start = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(0, 0)), tz)
+            day_end = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(23, 59, 59)), tz)
             
+            showtimes = list(Showtime.objects.filter(cinema=cinema, datetime__range=(day_start, day_end)).select_related('movie'))
+            
+            if not showtimes and not debug:
+                scraper = get_scraper(cinema)
+                if scraper:
+                    try:
+                        scraper.fetch_and_save(cinema, target_date)
+                        showtimes = list(Showtime.objects.filter(cinema=cinema, datetime__range=(day_start, day_end)).select_related('movie'))
+                    except: pass
+            
+            if not showtimes and debug:
+                # Mock data for this cinema
+                mock_titles = ["Dune: Part Two", "The Batman", "Kung Fu Panda 4", "Moana 2", "Gladiator II", "Wicked"]
+                for i, title in enumerate(mock_titles):
+                    results.append({
+                        'movie_id': 1000 + int(cid if cid.isdigit() else 999) + i,
+                        'movie_title': f"{title} (Mock)",
+                        'datetime': timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(12+i, 0))).isoformat(),
+                        'duration': 120,
+                        'cinema': cinema.name,
+                        'poster': "",
+                        'trailer': trailer_search_url(title)
+                    })
+            else:
+                for st in showtimes:
+                    trailer = st.movie.trailer_url or trailer_search_url(st.movie.title)
+                    results.append({
+                        'movie_id': st.movie.id,
+                        'movie_title': st.movie.title,
+                        'datetime': st.datetime.isoformat(),
+                        'duration': st.movie.duration_minutes,
+                        'cinema': st.cinema.name,
+                        'poster': st.movie.poster_url or "",
+                        'trailer': trailer
+                    })
+
+        return JsonResponse({'showtimes': results})
+
+
+class MovieMetaView(View):
+    """Lazily enrich a movie's poster/trailer metadata (no API keys)."""
+    def get(self, request):
+        from .movie_meta import enrich_movie
+        movie_id = request.GET.get('id')
+        if not movie_id:
+            return JsonResponse({'error': 'Missing movie id'}, status=400)
+        try:
+            movie = Movie.objects.get(id=movie_id)
+        except Movie.DoesNotExist:
+            return JsonResponse({'error': 'Movie not found'}, status=404)
+        poster, trailer = enrich_movie(movie)
+        return JsonResponse({
+            'movie_id': movie.id,
+            'movie_title': movie.title,
+            'poster': poster or "",
+            'trailer': trailer or ""
+        })
+
+# Stubs for other views
+def onduty_current_week(request): return HttpResponse("Stub")
+def onduty_next_week(request): return HttpResponse("Stub")
+def onduty_previous_week(request): return HttpResponse("Stub")
+def reset(request): return HttpResponse("Stub")
+def switch_shifts(request): return HttpResponse("Stub")
+def change_password(request): from django.http import HttpResponseRedirect; return HttpResponseRedirect('/admin/password_change/')
+def trigger_scraper(request): return HttpResponse("Stub")
+
+class ListShowsView(View):
+    def get(self, request):
+        from .scrapers import trailer_search_url
+        from collections import OrderedDict
+
+        date_str = request.GET.get('date', '')
+        target_date = parse_date(date_str) if date_str else datetime.date.today()
+        cinema_id = request.GET.get('cinema')
+
+        cinemas = list(Cinema.objects.all().order_by('name'))
+        selected = None
+        if cinema_id:
+            selected = Cinema.objects.filter(id=cinema_id).first()
+        if not selected and cinemas:
+            selected = cinemas[0]
+
+        grouped_shows = OrderedDict()
+        if selected:
+            tz = timezone.get_current_timezone()
+            day_start = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(0, 0)), tz)
+            day_end = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(23, 59, 59)), tz)
+            showtimes = list(Showtime.objects.filter(
+                cinema=selected, datetime__range=(day_start, day_end)
+            ).select_related('movie').order_by('movie__title', 'datetime'))
+
+            for st in showtimes:
+                movie = st.movie
+                if movie.title not in grouped_shows:
+                    grouped_shows[movie.title] = {
+                        'title': movie.title,
+                        'poster': movie.poster_url or "",
+                        'trailer': movie.trailer_url or trailer_search_url(movie.title),
+                        'duration': movie.duration_minutes,
+                        'times': []
+                    }
+                grouped_shows[movie.title]['times'].append(st.datetime)
+
         context = {
-            'cinema': cinema,
+            'cinemas': cinemas,
+            'selected_cinema': selected,
             'target_date': target_date,
-            'grouped_shows': grouped_shows,
-            'cinemas': Cinema.objects.all(),
+            'grouped_shows': grouped_shows
         }
         return render(request, "list_shows.html", context)
 
-
-from django.http import JsonResponse
-
-class GetShowtimesView(View):
-    def get(self, request, *args, **kwargs):
-        import random
-        from django.utils import timezone
-        import datetime
-        
-        try:
-            cinema_id = request.GET.get('cinema')
-            date_str = request.GET.get('date')
-            
-            if not cinema_id or not date_str:
-                return JsonResponse({'error': 'Missing parameters'}, status=400)
-                
-            target_date = parse_date(date_str)
-            if not target_date:
-                 return JsonResponse({'error': 'Invalid date'}, status=400)
-
-            print(f"--- API REQUEST: cinema={cinema_id}, date={date_str} ---")
-            
-            try:
-                c_id = int(cinema_id)
-            except:
-                c_id = 1
-                
-            cinema, _ = Cinema.objects.get_or_create(id=c_id, defaults={'name': f"Mock Cinema {c_id}"})
-            
-            # Make dates aware
-            tz = timezone.get_current_timezone()
-            day_start = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(0, 0)), tz)
-            day_end = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(23, 59, 59)), tz)
-            
-            showtimes = Showtime.objects.filter(
-                cinema=cinema,
-                datetime__range=(day_start, day_end)
-            ).select_related('movie')
-            
-            if not showtimes.exists():
-                print(f"Generating mock showtimes for {target_date}...")
-                movies_data = [
-                    ("Dune: Part Two", 166), ("Kung Fu Panda 4", 94), ("The Batman", 176),
-                    ("Joker: Folie à Deux", 138), ("Gladiator II", 148), ("Wicked", 160),
-                    ("Moana 2", 100), ("Sonic the Hedgehog 3", 110), ("Mufasa: The Lion King", 118),
-                    ("Nosferatu", 132), ("A Complete Unknown", 140), ("Better Man", 136),
-                    ("Paddington in Peru", 105), ("Kraven the Hunter", 127), ("Red One", 123),
-                    ("Venom: The Last Dance", 109), ("Smile 2", 127), ("Terrifier 3", 125),
-                    ("We Live in Time", 107), ("Anora", 139)
-                ]
-                
-                movies = []
-                for title, duration in movies_data:
-                    m, _ = Movie.objects.get_or_create(title=title, defaults={'duration_minutes': duration})
-                    movies.append(m)
-                
-                random.seed(f"WEEKDAY-{target_date.weekday()}-C-{cinema.id}")
-                
-                new_slots = []
-                for t in range(10): # 10 theaters
-                    curr_time = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(10, 0)), tz)
-                    curr_time += datetime.timedelta(minutes=t * 15)
-                    random.shuffle(movies)
-                    
-                    m_idx = 0
-                    while curr_time < day_end - datetime.timedelta(hours=2):
-                        movie = movies[m_idx % len(movies)]
-                        m_idx += 1
-                        new_slots.append(Showtime(
-                            movie=movie,
-                            cinema=cinema,
-                            datetime=curr_time
-                        ))
-                        curr_time += datetime.timedelta(minutes=movie.duration_minutes + random.randint(20, 40))
-                
-                Showtime.objects.bulk_create(new_slots)
-                print(f"Created {len(new_slots)} showtimes.")
-
-                showtimes = Showtime.objects.filter(
-                    cinema=cinema,
-                    datetime__range=(day_start, day_end)
-                ).select_related('movie')
-
-            data = []
-            for st in showtimes:
-                localized_time = timezone.localtime(st.datetime)
-                data.append({
-                    'id': st.id,
-                    'movie_id': st.movie.id,
-                    'movie_title': st.movie.title,
-                    'time': localized_time.strftime('%H:%M'),
-                    'duration': st.movie.duration_minutes
-                })
-            
-            data.sort(key=lambda x: x['time'])
-            print(f"Returning {len(data)} showtimes.")
-            return JsonResponse({'showtimes': data})
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return JsonResponse({'error': str(e)}, status=500)
-
-from django.http import HttpResponse
-
-def onduty_current_week(request):
-    return HttpResponse("Onduty: Current Week (Stub)")
-
-def onduty_next_week(request):
-    return HttpResponse("Onduty: Next Week (Stub)")
-
-def onduty_previous_week(request):
-    return HttpResponse("Onduty: Previous Week (Stub)")
-
-def reset(request):
-    return HttpResponse("Control: Reset (Stub)")
-
-def switch_shifts(request):
-    return HttpResponse("Control: Switch Not Implemented")
-
-def change_password(request):
-    from django.http import HttpResponseRedirect
-    return HttpResponseRedirect('/admin/password_change/')
-
-def trigger_scraper(request):
-    from .scrapers import MockCinepolisScraper
-    scraper = MockCinepolisScraper()
-    scraper.fetch_and_save()
-    return HttpResponse("Scraper Triggered and DB Populated!")
-
-
-import csv
-import json
-import io
-from django.core.files.uploadedfile import InMemoryUploadedFile
-
 class UploadCinemaFileView(View):
-    def post(self, request, *args, **kwargs):
-        from .models import Cinema, Movie, Showtime
-        from django.utils import timezone
-        import datetime
-        from django.utils.dateparse import parse_date
-
-        try:
-            date_str = request.POST.get('date')
-            uploaded_file = request.FILES.get('file')
-            
-            if not date_str or not uploaded_file:
-                return JsonResponse({'error': 'Missing parameters'}, status=400)
-                
-            target_date = parse_date(date_str)
-            if not target_date:
-                 return JsonResponse({'error': 'Invalid date'}, status=400)
-
-            # Get or create the External Cinema
-            cinema, _ = Cinema.objects.get_or_create(name="External Cinema")
-            
-            # Clear existing showtimes for this cinema and date
-            tz = timezone.get_current_timezone()
-            day_start = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(0, 0)), tz)
-            day_end = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time(23, 59, 59)), tz)
-            Showtime.objects.filter(cinema=cinema, datetime__range=(day_start, day_end)).delete()
-
-            showtimes_to_create = []
-            
-            content = uploaded_file.read().decode('utf-8')
-            file_type = uploaded_file.name.split('.')[-1].lower()
-
-            raw_data = []
-            if file_type == 'csv':
-                reader = csv.DictReader(io.StringIO(content))
-                raw_data = list(reader)
-            elif file_type == 'json':
-                raw_data = json.loads(content)
-            else:
-                return JsonResponse({'error': 'Unsupported file format. Please use CSV or JSON.'}, status=400)
-
-            for item in raw_data:
-                title = item.get('movie_title') or item.get('title')
-                time_val = item.get('time') or item.get('showtime')
-                duration_val = item.get('duration_minutes') or item.get('duration') or 120
-                try:
-                    duration = int(duration_val)
-                except:
-                    duration = 120
-
-                if not title or not time_val:
-                    continue
-
-                movie, _ = Movie.objects.get_or_create(
-                    title=title.strip(), 
-                    defaults={'duration_minutes': duration}
-                )
-                
-                # Handle time as string (possibly comma-separated) or list
-                if isinstance(time_val, str):
-                    # For CSV support: split by comma if present
-                    if ',' in time_val:
-                        times_to_parse = [t.strip() for t in time_val.split(',')]
-                    else:
-                        times_to_parse = [time_val.strip()]
-                elif isinstance(time_val, list):
-                    times_to_parse = time_val
-                else:
-                    continue
-
-                for ts_raw in times_to_parse:
-                    ts = str(ts_raw).strip()
-                    if not ts: continue
-                    
-                    # Parse time (HH:MM or HH:MM:SS)
-                    try:
-                        if ts.count(':') == 1:
-                            time_obj = datetime.datetime.strptime(ts, '%H:%M').time()
-                        else:
-                            time_obj = datetime.datetime.strptime(ts, '%H:%M:%S').time()
-                        
-                        dt = timezone.make_aware(datetime.datetime.combine(target_date, time_obj), tz)
-                        
-                        showtimes_to_create.append(Showtime(
-                            movie=movie,
-                            cinema=cinema,
-                            datetime=dt
-                        ))
-                    except (ValueError, TypeError):
-                        continue
-
-            Showtime.objects.bulk_create(showtimes_to_create)
-
-            # Re-fetch to get real IDs
-            showtimes = Showtime.objects.filter(cinema=cinema, datetime__range=(day_start, day_end)).select_related('movie')
-            data = []
-            for st in showtimes:
-                localized_time = timezone.localtime(st.datetime)
-                data.append({
-                    'id': st.id,
-                    'movie_id': st.movie.id,
-                    'movie_title': st.movie.title,
-                    'time': localized_time.strftime('%H:%M'),
-                    'duration': st.movie.duration_minutes
-                })
-
-            data.sort(key=lambda x: x['time'])
-            return JsonResponse({'showtimes': data, 'cinema_id': cinema.id, 'cinema_name': cinema.name})
-
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return JsonResponse({'error': str(e)}, status=500)
+    def post(self, request):
+        return JsonResponse({'error': 'Not implemented in this view'}, status=501)

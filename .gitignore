@@ -13,3 +13,18 @@ build/
 tests/report/
 venv/
 db.sqlite3
+
+# Local virtualenv (actual one used here is .venv)
+.venv/
+
+# Scratch / exploration / one-off scripts (local only)
+scratch/
+fix_cinemas.py
+
+# Environment & secrets
+.env
+.env.*
+
+# OS / editor junk & logs
+.DS_Store
+*.log

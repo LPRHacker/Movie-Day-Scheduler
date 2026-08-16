@@ -6,6 +6,7 @@ app_name = 'shifts'
 urlpatterns = [
     path('', views.HomeView.as_view(), name='home'),
     path('api/showtimes/', views.GetShowtimesView.as_view(), name='get_showtimes'),
+    path('api/movie-meta/', views.MovieMetaView.as_view(), name='movie_meta'),
     path('onduty/current/', views.onduty_current_week, name='onduty_current'),
     path('onduty/next/', views.onduty_next_week, name='onduty_next'),
     path('onduty/previous/', views.onduty_previous_week, name='onduty_previous'),

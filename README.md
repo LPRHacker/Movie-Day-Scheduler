@@ -5,10 +5,13 @@
 ## 🚀 Key Features
 
 - **Optimal Pathfinding**: Uses a sophisticated **Beam Search Algorithm** to find the most efficient movie flow for each individual.
+- **Multi-Cinema Coordination**: Support for selecting multiple theaters simultaneously to find the best overall group path.
+- **Transit Time Validation**: Automatic calculation and validation of travel times between different cinemas.
+- **Personalized Breaks**: Schedule "Quiet Time" or meal breaks; the algorithm treats them as high-priority constraints.
 - **Social Optimization**: Prioritizes shared showtimes so friends can watch together.
-- **Must-See Prioritization**: Mark a movie with a ⭐ to ensure the algorithm locks it in, regardless of complexity.
-- **Dynamic Overlap Handling**: Configurable "overlap scaler" to allow for credit-skipping or tight transitions.
-- **Fairness Logic**: Ensures every participant gets a balanced schedule with a "one movie per person" rule.
+- **Must-See Prioritization**: Mark a movie with a ⭐ to ensure the algorithm locks it in.
+- **Poster Integration**: Rich visual experience with movie posters fetched directly from cinema sources.
+- **Print-Friendly Export**: One-click professional schedule print-outs with a dedicated layout.
 - **Tree-Flow Visualization**: A Git-style timeline interface to see precisely how everyone's day unfolds.
 
 ## 🛠️ Technology Stack
