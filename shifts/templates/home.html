@@ -44,8 +44,44 @@
                         <div id="selectedCinemas" class="participant-list">
                             <!-- Cinema tags here -->
                         </div>
+                        <div id="criteriaGroup" class="criteria-box" style="display: none;">
+                            <div class="criteria-section criteria-scope">
+                                <div class="criteria-head">
+                                    <label>Applies to</label>
+                                </div>
+                                <div id="criteriaScope" class="criteria-scope-chips"></div>
+                                <div id="criteriaScopeNote" class="hall-filter-note"></div>
+                            </div>
+                            <div class="criteria-section">
+                                <div class="criteria-head">
+                                    <label>Hall type</label>
+                                    <button type="button" class="criteria-reset" id="resetTypes"
+                                        style="display: none;">Reset</button>
+                                </div>
+                                <div id="typeFilter" class="hall-chip-row">
+                                    {% for key, label in hall_types %}
+                                    <button type="button" class="type-chip type-chip-{{ key }}"
+                                        data-type="{{ key }}" title="{{ label }}">{% if key == 'xd' %}XD{% else %}{{ label }}{% endif %}</button>
+                                    {% endfor %}
+                                </div>
+                                <div id="typeFilterNote" class="hall-filter-note"></div>
+                            </div>
+                            <div class="criteria-section">
+                                <div class="criteria-head">
+                                    <label>Halls</label>
+                                    <button type="button" class="criteria-reset" id="resetHalls"
+                                        style="display: none;">Reset</button>
+                                </div>
+                                <div id="hallFilter" class="hall-filter"></div>
+                                <div id="hallFilterNote" class="hall-filter-note"></div>
+                            </div>
+                        </div>
                         <input type="hidden" id="cinemasInput" name="cinemas" value="">
+                        <input type="hidden" id="hallsInput" name="halls" value="">
+                        <input type="hidden" id="typesInput" name="types" value="">
+                        <input type="hidden" id="personCriteriaInput" name="person_criteria" value="{}">
                         <input type="hidden" id="transitsInput" name="transits" value="{}">
+                        <input type="hidden" id="personTransitsInput" name="person_transits" value="{}">
                     </div>
 
                     <div class="form-group" style="display: flex; align-items: center; gap: 1rem;">
@@ -71,7 +107,7 @@
                                 {% if participant_names %}
                                 {% for name in participant_names %}
                                 <div class="participant-pill selected" data-name="{{ name }}"
-                                    onclick="setActiveParticipant(this)">
+                                    onclick="setActiveParticipant(this.dataset.name)">
                                     {{ name }}
                                     <span class="remove-btn" onclick="removeParticipant(event, this)">✕</span>
                                 </div>
@@ -79,17 +115,17 @@
                                 {% else %}
                                 <!-- Default Mock Participants -->
                                 <div class="participant-pill selected" data-name="Alice"
-                                    onclick="setActiveParticipant(this)">
+                                    onclick="setActiveParticipant(this.dataset.name)">
                                     Alice
                                     <span class="remove-btn" onclick="removeParticipant(event, this)">✕</span>
                                 </div>
                                 <div class="participant-pill selected" data-name="Bob"
-                                    onclick="setActiveParticipant(this)">
+                                    onclick="setActiveParticipant(this.dataset.name)">
                                     Bob
                                     <span class="remove-btn" onclick="removeParticipant(event, this)">✕</span>
                                 </div>
                                 <div class="participant-pill selected" data-name="Charlie"
-                                    onclick="setActiveParticipant(this)">
+                                    onclick="setActiveParticipant(this.dataset.name)">
                                     Charlie
                                     <span class="remove-btn" onclick="removeParticipant(event, this)">✕</span>
                                 </div>
@@ -101,6 +137,30 @@
                             </div>
                         </div>
                         <input type="hidden" name="selected_participants" id="selectedParticipantsInput">
+
+                        <div class="availability-box">
+                            <div class="availability-head">
+                                <span id="availabilityLabel" class="availability-label">Select a person to limit their hours at the cinema</span>
+                            </div>
+                            <div id="availInputs" class="availability-inputs">
+                                <label class="avail-field" title="Only screenings that start after this time">
+                                    <input type="checkbox" id="availFromToggle">
+                                    <span class="avail-field-label">From</span>
+                                    <input type="text" class="avail-time" id="availStart" value="10:00"
+                                        maxlength="5" inputmode="numeric" placeholder="HH:MM"
+                                        aria-label="Available from (24-hour)">
+                                </label>
+                                <label class="avail-field" title="Only screenings that finish before this time">
+                                    <input type="checkbox" id="availUntilToggle">
+                                    <span class="avail-field-label">Until</span>
+                                    <input type="text" class="avail-time" id="availEnd" value="23:00"
+                                        maxlength="5" inputmode="numeric" placeholder="HH:MM"
+                                        aria-label="Available until (24-hour)">
+                                </label>
+                            </div>
+                            <div id="availabilitySummary" class="availability-summary"></div>
+                        </div>
+                        <input type="hidden" name="availability" id="availabilityInput" value="{}">
                     </div>
 
                     <div class="form-group">
@@ -177,9 +237,12 @@
                         {% for slot in path %}
                         <div class="movie-node {% if slot.type == 'break' %}break-node{% elif slot.type == 'transit' %}transit-node{% endif %}"
                             style="--offset: {{ slot.offset_pct|default:0|unlocalize }}%; --width: {{ slot.width_pct|default:0|unlocalize }}%; left: var(--offset); width: var(--width);"
-                            title="{{ slot.movie }} at {{ slot.cinema|default:'-' }} ({{ slot.time|date:'H:i' }} - {{ slot.end_time|date:'H:i' }})">
+                            title="{{ slot.movie }} at {{ slot.cinema|default:'-' }}{% if slot.hall %} · {{ slot.hall }}{% if slot.hall_type %} ({{ slot.hall_type }}){% endif %}{% endif %} ({{ slot.time|date:'H:i' }} - {{ slot.end_time|date:'H:i' }})">
                             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ slot.movie }}</span>
                             <span class="duration">⏱️ {{ slot.duration }}m</span>
+                            {% if slot.hall %}
+                            <span class="duration hall-label">🏛️ {{ slot.hall }}{% if slot.hall_type %} · {{ slot.hall_type }}{% endif %}</span>
+                            {% endif %}
                             {% if slot.trailer and slot.type == 'movie' %}
                             <a class="node-trailer" href="{{ slot.trailer }}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Watch trailer">▶ Trailer</a>
                             {% endif %}
@@ -213,6 +276,15 @@
         let movieIdToTitle = {};
         let selectedCinemas = []; // [ { id, name } ]
         let transitTimes = {}; // { "id1-id2": minutes }
+        let selectedHalls = null; // null = all halls; otherwise the chosen hall ids
+        let knownHalls = []; // halls of the selected cinemas/date (from the API)
+        let selectedTypes = null; // null = all hall types; otherwise the chosen type keys
+        // Criteria and travel times can also be set for one person; the group
+        // values above stay the default those people inherit.
+        let personCriteria = {}; // { name: { halls?: [ids], types?: [keys] } }
+        let personTransits = {}; // { name: { "id1-id2": minutes } }
+        let criteriaScope = 'everyone'; // "everyone" or a participant name
+        let availability = {}; // { name: { start?: "HH:MM", end?: "HH:MM" } }
 
         // UI Elements
         const cinemaSelect = document.getElementById('cinemaSelect');
@@ -227,8 +299,17 @@
         const transitsInput = document.getElementById('transitsInput');
         const breaksInput = document.getElementById('breaksInput');
         const breaksContainer = document.getElementById('breaksContainer');
+        const hallsInput = document.getElementById('hallsInput');
+        const typesInput = document.getElementById('typesInput');
+        const personCriteriaInput = document.getElementById('personCriteriaInput');
+        const personTransitsInput = document.getElementById('personTransitsInput');
+        const availabilityInput = document.getElementById('availabilityInput');
+        const allHallTypes = Array.from(document.querySelectorAll('#typeFilter .type-chip'))
+            .map(chip => chip.dataset.type);
 
-        const transitModal = document.getElementById('transitModal');
+        // The transit modal markup sits after this script, so it is looked up
+        // when needed instead of at parse time.
+        const transitModal = () => document.getElementById('transitModal');
         let pendingTransitPair = null;
 
         // 1. Participant & State Management
@@ -249,6 +330,7 @@
             document.getElementById('activePartHidden').value = name;
             updateMovieGrid();
             renderBreaks();
+            syncAvailabilityControls();
         }
 
         function updateInputs() {
@@ -257,6 +339,11 @@
             cinemasInput.value = selectedCinemas.map(c => c.id).join(',');
             transitsInput.value = JSON.stringify(transitTimes);
             breaksInput.value = JSON.stringify(breaks);
+            hallsInput.value = (selectedHalls || []).join(',');
+            typesInput.value = (selectedTypes || []).join(',');
+            personCriteriaInput.value = JSON.stringify(personCriteria);
+            personTransitsInput.value = JSON.stringify(personTransits);
+            availabilityInput.value = JSON.stringify(availability);
         }
 
         // 2. Cinema Management
@@ -286,8 +373,21 @@
             if (id === 'external') {
                 document.getElementById('fileUploadGroup').style.display = 'none';
             }
+            clearCriteriaIfNoCinemas();
             renderCinemaTags();
             loadMovies();
+        }
+
+        // Hall/hall-type criteria describe the current cinema selection, so they
+        // are cleared once the last cinema is removed (criteria are per-cinema).
+        function clearCriteriaIfNoCinemas() {
+            if (selectedCinemas.length) return false;
+            selectedHalls = null;
+            selectedTypes = null;
+            knownHalls = [];
+            personCriteria = {};
+            criteriaScope = 'everyone';
+            return true;
         }
 
         function renderCinemaTags() {
@@ -304,20 +404,370 @@
             updateInputs();
         }
 
-        function showTransitPrompt(c1, c2) {
-            pendingTransitPair = [c1.id, c2.id];
-            document.getElementById('transitPromptText').innerText = `How many minutes to get from ${c1.name} to ${c2.name}?`;
-            transitModal.style.display = 'flex';
+        // Transit can be saved for everyone or for one person, who may travel
+        // separately; the group value is what everyone else uses.
+        function transitTable(scope) {
+            return scope === 'everyone' ? transitTimes : (personTransits[scope] || {});
         }
 
-        function closeTransitModal() { transitModal.style.display = 'none'; }
+        function transitMinutes(scope, pair) {
+            const table = transitTable(scope);
+            const forward = `${pair[0]}-${pair[1]}`;
+            const reverse = `${pair[1]}-${pair[0]}`;
+            return table[forward] !== undefined ? table[forward] : table[reverse];
+        }
+
+        function showTransitPrompt(c1, c2) {
+            pendingTransitPair = [c1.id, c2.id];
+            const modal = transitModal();
+            if (!modal) return;
+            const prompt = document.getElementById('transitPromptText');
+            if (prompt) prompt.innerText = `How many minutes to get from ${c1.name} to ${c2.name}?`;
+            const scopeSelect = document.getElementById('transitScope');
+            if (scopeSelect) {
+                scopeSelect.innerHTML = '<option value="everyone">Everyone</option>' +
+                    participants.map(name => `<option value="${name}">${name} only</option>`).join('');
+                scopeSelect.value = 'everyone';
+            }
+            const minutes = document.getElementById('transitMins');
+            if (minutes) minutes.value = transitMinutes('everyone', pendingTransitPair) || 30;
+            modal.style.display = 'flex';
+        }
+
+        function closeTransitModal() {
+            const modal = transitModal();
+            if (modal) modal.style.display = 'none';
+        }
         function saveTransit() {
             const mins = parseInt(document.getElementById('transitMins').value) || 30;
             const key = `${pendingTransitPair[0]}-${pendingTransitPair[1]}`;
-            transitTimes[key] = mins;
+            const scopeSelect = document.getElementById('transitScope');
+            const scope = scopeSelect ? scopeSelect.value : 'everyone';
+            if (scope === 'everyone') {
+                transitTimes[key] = mins;
+            } else {
+                const own = personTransits[scope] || (personTransits[scope] = {});
+                own[key] = mins;
+            }
             closeTransitModal();
             updateInputs();
         }
+
+        // 2b. Hall criteria. Two independent criteria narrow the movies shown for
+        // the selected cinemas (all of them, when several are selected): the hall
+        // type (regular/vip/premium/3d/xd) and the individual halls by name.
+        function renderCriteria() {
+            document.getElementById('criteriaGroup').style.display = selectedCinemas.length ? 'block' : 'none';
+            renderCriteriaScope();
+            renderTypeFilter();
+            renderHallFilter();
+        }
+
+        // Criteria belong to a scope: "everyone" (the group default) or one
+        // participant who wants their own halls/types. Unset keys inherit.
+        function criteriaFor(scope) {
+            const group = { halls: selectedHalls, types: selectedTypes };
+            const own = scope === 'everyone' ? null : personCriteria[scope];
+            if (!own) return group;
+            // An empty list is "everything" for that person, i.e. no restriction.
+            return {
+                halls: 'halls' in own ? (own.halls.length ? own.halls : null) : group.halls,
+                types: 'types' in own ? (own.types.length ? own.types : null) : group.types,
+            };
+        }
+
+        function hasOwnCriteria(scope, key) {
+            const own = personCriteria[scope];
+            return !!(own && key in own);
+        }
+
+        // `value` is the list of included ids/keys, or null for "no filter".
+        function setScopedCriteria(key, value) {
+            const stored = value || [];
+            if (criteriaScope === 'everyone') {
+                if (key === 'halls') selectedHalls = stored.length ? stored : null;
+                else selectedTypes = stored.length ? stored : null;
+            } else {
+                const own = personCriteria[criteriaScope] || (personCriteria[criteriaScope] = {});
+                own[key] = stored;
+            }
+            updateInputs();
+        }
+
+        function resetScopedCriteria(key) {
+            if (criteriaScope === 'everyone') {
+                if (key === 'halls') selectedHalls = null;
+                else selectedTypes = null;
+            } else {
+                const own = personCriteria[criteriaScope];
+                if (own) {
+                    delete own[key];
+                    if (!Object.keys(own).length) delete personCriteria[criteriaScope];
+                }
+            }
+            renderCriteria();
+            updateInputs();
+            loadMovies();
+        }
+
+        function renderCriteriaScope() {
+            const box = document.getElementById('criteriaScope');
+            const note = document.getElementById('criteriaScopeNote');
+            if (!box) return;
+            box.innerHTML = '';
+            const scopes = [{ scope: 'everyone', label: 'Everyone' }].concat(
+                participants.map(name => ({ scope: name, label: name }))
+            );
+            scopes.forEach(({ scope, label }) => {
+                const custom = scope !== 'everyone' && !!personCriteria[scope];
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = `scope-chip ${criteriaScope === scope ? 'active' : ''} ${custom ? 'custom' : ''}`;
+                chip.textContent = label;
+                chip.title = custom
+                    ? `${label} has their own criteria`
+                    : (scope === 'everyone' ? 'Criteria for the whole group' : `Follow the group criteria for ${label}`);
+                chip.onclick = () => { criteriaScope = scope; renderCriteria(); };
+                box.appendChild(chip);
+            });
+            if (note) {
+                note.textContent = criteriaScope === 'everyone'
+                    ? 'Shared by everyone without their own criteria.'
+                    : `${criteriaScope} can pick their own halls and types.`;
+            }
+        }
+
+        function renderTypeFilter() {
+            const { types } = criteriaFor(criteriaScope);
+            const chips = document.querySelectorAll('#typeFilter .type-chip');
+            chips.forEach(chip => {
+                const active = !types || types.includes(chip.dataset.type);
+                chip.classList.toggle('active', active);
+                chip.classList.toggle('excluded', !active);
+                chip.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            const custom = criteriaScope === 'everyone' ? !!types : hasOwnCriteria(criteriaScope, 'types');
+            document.getElementById('resetTypes').style.display = custom ? 'inline-flex' : 'none';
+            const suffix = criteriaScope === 'everyone' ? '' : ` for ${criteriaScope}`;
+            document.getElementById('typeFilterNote').textContent = types
+                ? `${types.length} of ${allHallTypes.length} types included${suffix}`
+                : (criteriaScope === 'everyone'
+                    ? `All ${allHallTypes.length} types included`
+                    : `Following the group types`);
+        }
+
+        function toggleType(typeKey) {
+            const { types } = criteriaFor(criteriaScope);
+            let current = types ? types.slice() : allHallTypes.slice();
+            if (current.includes(typeKey)) {
+                current = current.filter(t => t !== typeKey);
+            } else {
+                current.push(typeKey);
+            }
+            // Everything selected (or nothing) means "no type filter".
+            const everything = current.length === 0 || current.length === allHallTypes.length;
+            setScopedCriteria('types', everything ? null : current);
+            renderCriteria();
+            loadMovies();
+        }
+
+        function resetTypes() {
+            resetScopedCriteria('types');
+        }
+
+        function renderHallFilter() {
+            const container = document.getElementById('hallFilter');
+            const note = document.getElementById('hallFilterNote');
+            container.innerHTML = '';
+
+            if (!knownHalls.length) {
+                // Cinemas that only publish formats (MovieLand, Hot Cinema) have
+                // no hall numbers at all, so the type criterion is the useful one.
+                note.textContent = selectedCinemas.length
+                    ? 'No hall numbers for these cinemas — filter by Hall type instead.'
+                    : '';
+                document.getElementById('resetHalls').style.display = 'none';
+                return;
+            }
+
+            const { halls: allowedHalls } = criteriaFor(criteriaScope);
+
+            // Group the halls by cinema so multiple venues stay readable.
+            const byCinema = new Map();
+            knownHalls.forEach(h => {
+                if (!byCinema.has(h.cinema)) byCinema.set(h.cinema, []);
+                byCinema.get(h.cinema).push(h);
+            });
+
+            byCinema.forEach((cinemaHalls, cinemaName) => {
+                const row = document.createElement('div');
+                row.className = 'hall-group';
+                // Name the cinema whenever the halls could come from more than one.
+                if (selectedCinemas.length > 1) {
+                    const caption = document.createElement('div');
+                    caption.className = 'hall-group-name';
+                    caption.textContent = cinemaName;
+                    row.appendChild(caption);
+                }
+                const chips = document.createElement('div');
+                chips.className = 'hall-chip-row';
+                cinemaHalls.forEach(h => {
+                    const active = !allowedHalls || allowedHalls.includes(h.id);
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = `hall-chip ${active ? 'active' : ''}`;
+                    chip.title = `${h.cinema} · ${h.name} · ${h.type_label}`;
+                    chip.onclick = () => toggleHall(h.id);
+                    // Halls carry only their name/number; the type is its own criterion.
+                    chip.textContent = h.name;
+                    chips.appendChild(chip);
+                });
+                row.appendChild(chips);
+                container.appendChild(row);
+            });
+
+            const custom = criteriaScope === 'everyone'
+                ? !!allowedHalls
+                : hasOwnCriteria(criteriaScope, 'halls');
+            document.getElementById('resetHalls').style.display = custom ? 'inline-flex' : 'none';
+            const hallWord = knownHalls.length === 1 ? 'hall' : 'halls';
+            const suffix = criteriaScope === 'everyone' ? '' : ` for ${criteriaScope}`;
+            if (allowedHalls) {
+                note.textContent = `${allowedHalls.length} of ${knownHalls.length} ${hallWord} included${suffix}`;
+            } else {
+                note.textContent = criteriaScope === 'everyone'
+                    ? `All ${knownHalls.length} ${hallWord} included`
+                    : 'Following the group halls';
+            }
+        }
+
+        function toggleHall(hallId) {
+            const allIds = knownHalls.map(h => h.id);
+            const { halls: allowedHalls } = criteriaFor(criteriaScope);
+            let current = allowedHalls ? allowedHalls.slice() : allIds.slice();
+            if (current.includes(hallId)) {
+                current = current.filter(id => id !== hallId);
+            } else {
+                current.push(hallId);
+            }
+            // Everything selected (or nothing) means "no hall filter".
+            const everything = current.length === 0 || (allIds.length > 0 && allIds.every(id => current.includes(id)));
+            setScopedCriteria('halls', everything ? null : current);
+            renderCriteria();
+            loadMovies();
+        }
+
+        function resetHalls() {
+            resetScopedCriteria('halls');
+        }
+
+        document.getElementById('resetTypes').onclick = resetTypes;
+        document.getElementById('resetHalls').onclick = resetHalls;
+        document.querySelectorAll('#typeFilter .type-chip').forEach(chip => {
+            chip.onclick = () => toggleType(chip.dataset.type);
+        });
+
+        // 2c. Availability windows. Start and end are independent: a person may be
+        // limited by only their start time, only their end time, or both.
+        function syncAvailabilityControls() {
+            const fromToggle = document.getElementById('availFromToggle');
+            const untilToggle = document.getElementById('availUntilToggle');
+            const start = document.getElementById('availStart');
+            const end = document.getElementById('availEnd');
+            const label = document.getElementById('availabilityLabel');
+            const window_ = activeParticipant ? availability[activeParticipant] : null;
+            const hasStart = !!(window_ && window_.start);
+            const hasEnd = !!(window_ && window_.end);
+
+            fromToggle.checked = hasStart;
+            untilToggle.checked = hasEnd;
+            [fromToggle, untilToggle].forEach(box => { box.disabled = !activeParticipant; });
+            start.value = hasStart ? window_.start : '10:00';
+            end.value = hasEnd ? window_.end : '23:00';
+            start.disabled = !activeParticipant || !hasStart;
+            end.disabled = !activeParticipant || !hasEnd;
+            document.querySelectorAll('#availInputs .avail-field').forEach(field => {
+                const box = field.querySelector('input[type="checkbox"]');
+                field.classList.toggle('disabled', !activeParticipant);
+                field.classList.toggle('unused', !box.checked);
+            });
+            label.textContent = !activeParticipant
+                ? 'Select a person to limit their hours at the cinema'
+                : `${activeParticipant}: at the cinema ${window_ ? describeWindow(window_) : 'all day'}`;
+            renderAvailabilitySummary();
+        }
+
+        function describeWindow(w) {
+            if (w.start && w.end) return `${w.start}–${w.end}`;
+            if (w.start) return `from ${w.start}`;
+            return `until ${w.end}`;
+        }
+
+        function renderAvailabilitySummary() {
+            const box = document.getElementById('availabilitySummary');
+            const limited = participants.filter(p => availability[p]);
+            if (!limited.length) {
+                box.innerHTML = '<span class="availability-none">Everyone is available all day.</span>';
+                return;
+            }
+            box.innerHTML = limited.map(p => {
+                return `<span class="availability-chip">🕐 ${p} · ${describeWindow(availability[p])}</span>`;
+            }).join('');
+        }
+
+        // Times are entered and displayed as 24-hour HH:MM everywhere; the native
+        // time control follows the browser locale and would show AM/PM.
+        function isTimeText(value) {
+            return /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(value);
+        }
+
+        function normalizeTimeText(field) {
+            // Keep only up to four digits while typing; "945" becomes 09:45 on commit.
+            field.value = field.value.replace(/[^0-9]/g, '').slice(0, 4);
+        }
+
+        function commitTimeText(field, fallback) {
+            let digits = field.value.replace(/[^0-9]/g, '').slice(0, 4);
+            if (digits.length === 3) digits = `0${digits}`;
+            if (digits.length <= 2) digits = digits.padStart(2, '0') + '00';
+            const value = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+            field.value = isTimeText(value) ? value : fallback;
+        }
+
+        function readAvailabilityControls() {
+            if (!activeParticipant) return;
+            const fromOn = document.getElementById('availFromToggle').checked;
+            const untilOn = document.getElementById('availUntilToggle').checked;
+            const startField = document.getElementById('availStart');
+            const endField = document.getElementById('availEnd');
+            const window_ = {};
+            if (fromOn) {
+                commitTimeText(startField, '10:00');
+                window_.start = startField.value;
+            }
+            if (untilOn) {
+                commitTimeText(endField, '23:00');
+                window_.end = endField.value;
+            }
+            if (window_.start || window_.end) {
+                availability[activeParticipant] = window_;
+            } else {
+                delete availability[activeParticipant];
+            }
+            syncAvailabilityControls();
+            updateInputs();
+        }
+
+        document.getElementById('availFromToggle').onchange = readAvailabilityControls;
+        document.getElementById('availUntilToggle').onchange = readAvailabilityControls;
+        document.querySelectorAll('#availInputs .avail-time').forEach(field => {
+            field.addEventListener('input', () => normalizeTimeText(field));
+            field.addEventListener('change', readAvailabilityControls);
+            field.addEventListener('blur', () => {
+                normalizeTimeText(field);
+                readAvailabilityControls();
+            });
+        });
 
         // 3. Breaks Management
         function addBreak() {
@@ -363,20 +813,66 @@
             return url.includes('duckduckgo.com') || url.includes('youtube.com/results');
         }
 
+        // The grid offers every movie that at least one person may watch, so a
+        // person's own criteria are unioned with the group criteria.
+        function gridQueryCriteria() {
+            let halls = selectedHalls;
+            let types = selectedTypes;
+            const own = Object.values(personCriteria);
+            const unrestricted = (key) => own.some(o => key in o && !o[key].length);
+            if (unrestricted('halls')) {
+                halls = null;
+            } else if (halls) {
+                const merged = new Set(halls);
+                own.forEach(o => (o.halls || []).forEach(id => merged.add(id)));
+                halls = Array.from(merged);
+            }
+            if (unrestricted('types')) {
+                types = null;
+            } else if (types) {
+                const merged = new Set(types);
+                own.forEach(o => (o.types || []).forEach(key => merged.add(key)));
+                types = Array.from(merged);
+            }
+            return { halls, types };
+        }
+
         async function loadMovies() {
             const cinemaIds = selectedCinemas.map(c => c.id).join(',');
             const date = dateInput.value;
             const debug = document.getElementById('debugMode').checked;
             if (!cinemaIds || !date) {
                 movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">Select a cinema and date to see available movies...</div>';
+                knownHalls = [];
+                clearCriteriaIfNoCinemas();
+                renderCriteria();
                 return;
             }
 
             movieList.innerHTML = '<div style="padding: 2rem; text-align: center; grid-column: 1/-1;">Loading movies... 🍿</div>';
 
             try {
-                const res = await fetch(`/api/showtimes/?cinema=${cinemaIds}&date=${date}&debug=${debug}`);
+                const gridCriteria = gridQueryCriteria();
+                const halls = (gridCriteria.halls || []).join(',');
+                const types = (gridCriteria.types || []).join(',');
+                const res = await fetch(`/api/showtimes/?cinema=${cinemaIds}&date=${date}&debug=${debug}&halls=${encodeURIComponent(halls)}&types=${encodeURIComponent(types)}`);
                 const data = await res.json();
+
+                knownHalls = data.halls || [];
+                // Drop halls that no longer exist (cinema/date changed).
+                if (selectedHalls) {
+                    selectedHalls = selectedHalls.filter(id => knownHalls.some(h => h.id === id));
+                    if (!selectedHalls.length) selectedHalls = null;
+                }
+                // Same for a person's own halls; an empty result means "inherit
+                // the group criteria" rather than "every hall".
+                Object.values(personCriteria).forEach(own => {
+                    if (!own.halls) return;
+                    own.halls = own.halls.filter(id => knownHalls.some(h => h.id === id));
+                    if (!own.halls.length) delete own.halls;
+                });
+                renderCriteria();
+                updateInputs();
 
                 if (data.showtimes && data.showtimes.length > 0) {
                     movieList.innerHTML = '';
@@ -417,6 +913,8 @@
                         }
                     });
                     updateMovieGrid();
+                } else if (gridCriteria.halls || gridCriteria.types) {
+                    movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">No movies in the selected halls/types. Adjust the criteria or reset them.</div>';
                 } else {
                     movieList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted); grid-column: 1/-1;">No movies found. Try another date or cinema!</div>';
                 }
@@ -528,6 +1026,7 @@
                 newNameInput.value = '';
                 if (!activeParticipant) setActiveParticipant(name);
                 updateInputs();
+                renderCriteria();
             }
         });
 
@@ -538,10 +1037,16 @@
             participants = participants.filter(p => p !== name);
             delete preferences[name];
             delete breaks[name];
+            delete availability[name];
+            delete personCriteria[name];
+            delete personTransits[name];
+            if (criteriaScope === name) criteriaScope = 'everyone';
             if (activeParticipant === name) activeParticipant = participants[0] || null;
             pill.remove();
             syncParticipantsFromDOM();
+            renderCriteria();
             if (activeParticipant) setActiveParticipant(activeParticipant);
+            else syncAvailabilityControls();
         }
 
         // Handle Form Submit
@@ -583,7 +1088,26 @@
             const initBreaks = JSON.parse('{{ breaks_json|default:"{}"|escapejs }}');
             breaks = initBreaks;
 
+            // Restore hall criteria (halls and hall types are independent)
+            const initHalls = JSON.parse('{{ halls_json|default:"[]"|escapejs }}');
+            if (initHalls.length) selectedHalls = initHalls.map(String);
+            const initTypes = JSON.parse('{{ types_json|default:"[]"|escapejs }}');
+            if (initTypes.length) selectedTypes = initTypes.map(String);
+
+            // Restore per-person criteria and travel times
+            personCriteria = JSON.parse('{{ person_criteria_json|default:"{}"|escapejs }}') || {};
+            // Hall ids arrive as numbers from the server and are strings in the UI.
+            Object.values(personCriteria).forEach(own => {
+                if (own.halls) own.halls = own.halls.map(String);
+            });
+            personTransits = JSON.parse('{{ person_transits_json|default:"{}"|escapejs }}') || {};
+
+            // Restore availability windows
+            availability = JSON.parse('{{ availability_json|default:"{}"|escapejs }}') || {};
+
             syncParticipantsFromDOM();
+            renderCriteria();
+            syncAvailabilityControls();
             
             const firstPill = participantList.querySelector('.participant-pill');
             if (firstPill) {
@@ -600,6 +1124,8 @@
         <div class="modal-content">
             <h3 style="margin-top:0">🚗 Transit Time</h3>
             <p id="transitPromptText" style="font-size:0.9rem; color:var(--text-muted)"></p>
+            <label style="display:block; font-size:0.7rem; color:var(--text-muted); margin-bottom:0.35rem;">Applies to</label>
+            <select id="transitScope" style="background: rgba(0,0,0,0.5); border:1px solid var(--primary); color:white; padding: 0.5rem; width:100%; border-radius:8px; margin-bottom:0.75rem;"></select>
             <input type="number" id="transitMins" placeholder="Minutes..." value="30" 
                 style="background: rgba(0,0,0,0.5); border:1px solid var(--primary); color:white; padding: 0.5rem; width:100%; border-radius:8px;">
             <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">

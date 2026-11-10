@@ -76,6 +76,7 @@ label {
 }
 
 input[type="date"],
+input[type="time"],
 select,
 input[type="range"],
 input[type="text"] {
@@ -605,6 +606,15 @@ input:checked+.slider:before {
     color: white;
 }
 
+.showtime-hall {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    opacity: 0.7;
+}
+
 .back-link {
     display: inline-block;
     margin-bottom: 1rem;
@@ -626,4 +636,309 @@ input:checked+.slider:before {
     border-radius: 12px;
     cursor: pointer;
     font-weight: 700;
+}
+
+/* Participant availability windows */
+.availability-box {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 14px;
+    background: rgba(0, 210, 255, 0.06);
+    border: 1px solid rgba(0, 210, 255, 0.15);
+}
+
+.availability-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.availability-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.availability-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.6rem;
+}
+
+.avail-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.6rem 0.25rem 0.4rem;
+    border-radius: 100px;
+    border: 1px solid rgba(0, 210, 255, 0.25);
+    background: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.avail-field input[type="checkbox"] {
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.avail-field-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.avail-field .avail-time {
+    max-width: 110px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+
+.avail-field.unused {
+    opacity: 0.55;
+}
+
+.avail-field.unused .avail-time {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.avail-field.disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.availability-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+}
+
+.availability-chip {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 100px;
+    background: rgba(0, 210, 255, 0.12);
+    border: 1px solid rgba(0, 210, 255, 0.3);
+    color: var(--accent);
+}
+
+.availability-none {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* Hall / hall-type criteria */
+.criteria-box {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.criteria-section {
+    padding: 0.6rem 0.7rem;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.criteria-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.4rem;
+}
+
+.criteria-head label {
+    margin-bottom: 0;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.criteria-reset {
+    display: none;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 100px;
+    background: transparent;
+    border: 1px solid rgba(0, 210, 255, 0.4);
+    color: var(--accent);
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.criteria-reset:hover {
+    background: rgba(0, 210, 255, 0.12);
+}
+
+/* Criteria scope: the whole group, or one person with their own halls/types */
+.criteria-scope .criteria-head {
+    margin-bottom: 0.35rem;
+}
+
+.criteria-scope-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.scope-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.scope-chip:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--text);
+}
+
+.scope-chip.active {
+    background: rgba(0, 210, 255, 0.14);
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+/* A dot marks a person who has their own criteria instead of the group's. */
+.scope-chip.custom::after {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+.scope-chip.active.custom::after {
+    background: var(--text);
+}
+
+.type-chip {
+    padding: 0.3rem 0.7rem;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.type-chip:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--text);
+}
+
+.type-chip.active {
+    background: rgba(0, 210, 255, 0.14);
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+.type-chip.excluded {
+    text-decoration: line-through;
+    opacity: 0.5;
+    border-style: dashed;
+}
+
+.type-chip-vip.active {
+    border-color: #ffd166;
+    background: rgba(255, 209, 102, 0.14);
+}
+
+.type-chip-premium.active {
+    border-color: #c084fc;
+    background: rgba(192, 132, 252, 0.14);
+}
+
+.type-chip-3d.active {
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.14);
+}
+
+.type-chip-xd.active {
+    border-color: #f472b6;
+    background: rgba(244, 114, 182, 0.14);
+}
+
+/* Hall filter */
+.hall-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 210px;
+    overflow-y: auto;
+}
+
+.hall-filter:empty {
+    display: none;
+}
+
+.hall-group-name {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+}
+
+.hall-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.hall-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.65rem;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.hall-chip:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--text);
+}
+
+.hall-chip.active {
+    background: rgba(0, 210, 255, 0.14);
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+.hall-filter-note {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 0.35rem;
+}
+
+.hall-label {
+    opacity: 0.85;
 }

@@ -14,18 +14,21 @@ def seed_cinemas():
         {"name": "MovieLand Haifa", "location_id": "1290"},
         {"name": "MovieLand Karmiel", "location_id": "1291"},
         
-        # Hot Cinema
-        {"name": "Hot Cinema Petah Tikva", "location_id": "16"},
-        {"name": "Hot Cinema Kfar Saba", "location_id": "1"},
-        {"name": "Hot Cinema Ashdod", "location_id": "2"},
-        {"name": "Hot Cinema Modiin", "location_id": "19"},
+        # Hot Cinema (branch ids come from hotcinema.co.il/theater/<id>)
+        {"name": "Hot Cinema Petah Tikva", "location_id": "14"},
+        {"name": "Hot Cinema Kfar Saba", "location_id": "16"},
+        {"name": "Hot Cinema Ashdod", "location_id": "5"},
+        {"name": "Hot Cinema Modiin", "location_id": "1"},
         
-        # Cinema City
-        {"name": "Cinema City Ayalon", "location_id": "1170"},
-        {"name": "Cinema City Rishon LeZion", "location_id": "1175"},
-        {"name": "Cinema City Glilot", "location_id": "1173"},
-        {"name": "Cinema City Jerusalem", "location_id": "1160"},
-        {"name": "Cinema City Hadera", "location_id": "1168"},
+        # Cinema City (location ids come from tickets.cinema-city.co.il)
+        {"name": "Cinema City Glilot", "location_id": "1170"},
+        {"name": "Cinema City Rishon LeZion", "location_id": "1173"},
+        {"name": "Cinema City Jerusalem", "location_id": "1174"},
+        {"name": "Cinema City Kfar Saba", "location_id": "1175"},
+        {"name": "Cinema City Netanya", "location_id": "1176"},
+        {"name": "Cinema City Beer Sheva", "location_id": "1178"},
+        {"name": "Cinema City Ashdod", "location_id": "1181"},
+        {"name": "Cinema City Hadera", "location_id": "1350"},
         
         # Yes Planet (Planet)
         {"name": "Yes Planet Ayalon", "location_id": "1025"},

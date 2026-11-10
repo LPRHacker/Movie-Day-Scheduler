@@ -1,15 +1,79 @@
 from itertools import combinations
 from datetime import timedelta, datetime
 from typing import List, Dict, Any
-from .models import Person, Movie, Showtime, Preference
+from .models import Person, Movie, Showtime, Preference, Hall
 from django.utils import timezone
+
+# Score awarded to every pair of people watching the same show together. The
+# bonus grows quadratically with the attendee count (2 people = 1 pair,
+# 3 people = 3 pairs, 4 people = 6 pairs), so a showing that more people can
+# actually attend outweighs a showing only two people can make.
+SOCIAL_PAIR_WEIGHT = 20
+
+
+def _score_path(path, must_sees):
+    """Per-person score: must-sees dominate, then the number of movies seen."""
+    seen_movies = frozenset(st.movie.id for st in path)
+    return 10000 * len(seen_movies.intersection(must_sees)) + 100 * len(path)
+
+
+def _social_score(st_counts):
+    """Bonus for shared showings, weighted by how many people attend."""
+    return sum(
+        SOCIAL_PAIR_WEIGHT * (count * (count - 1) // 2)
+        for count in st_counts.values() if count > 1
+    )
+
+
+def _day_bound(target_date, value):
+    """Aware datetime for a "HH:MM" string on target_date (None if unusable)."""
+    if not value:
+        return None
+    try:
+        return timezone.make_aware(
+            datetime.combine(target_date, datetime.strptime(str(value), "%H:%M").time())
+        )
+    except (TypeError, ValueError):
+        return None
+
+
+def _hall_matches(showtime, hall_ids, hall_types):
+    """True when a screening passes one person's hall and hall-type criteria."""
+    if hall_ids and showtime.hall_id not in hall_ids:
+        return False
+    if hall_types:
+        # Rentals without a hall row are regular screenings.
+        hall_type = showtime.hall.hall_type if showtime.hall else Hall.REGULAR
+        if hall_type not in hall_types:
+            return False
+    return True
+
 
 def generate_schedule(persons: List[Person], target_date, cinemas: List[Any], 
                       allow_overlap: bool=False, max_overlap_minutes: int=0, 
                       movie_ids: Dict[str, Any]=None, breaks: Dict[str, List[Dict]] = None,
-                      transit_times: Dict[str, int] = None):
+                      transit_times: Dict[str, int] = None,
+                      availability: Dict[str, Dict[str, str]] = None,
+                      hall_ids: List[int] = None,
+                      hall_types: List[str] = None,
+                      person_criteria: Dict[str, Dict[str, Any]] = None,
+                      person_transits: Dict[str, Dict[str, int]] = None):
     """
     Generates an optimized schedule for a full day at the cinema.
+
+    availability: {person: {'start': 'HH:MM', 'end': 'HH:MM'}} - the hours that
+        person is actually at the cinema. Either bound may be missing (a person
+        can be limited by only a start or only an end). Shows that start before
+        the start bound or end after the end bound are not offered to them.
+    hall_ids: restrict the schedule to these Hall ids (empty/None = all halls).
+        This is the group-wide hall criterion.
+    hall_types: restrict the schedule to these hall types (empty/None = all).
+    person_criteria: {person: {'halls': [ids], 'types': [keys]}} - a person's own
+        criteria, replacing the group-wide ones for that person only. Missing
+        entries inherit hall_ids/hall_types, so one run serves both the people
+        who filter individually and those who follow the group.
+    person_transits: {person: {'id1-id2': minutes}} - travel times that apply to
+        that person, layered over the group-wide transit_times.
     """
     person_prefs = {}
     all_desired_ids = set()
@@ -33,11 +97,14 @@ def generate_schedule(persons: List[Person], target_date, cinemas: List[Any],
         desired_movies = set([pref.movie for pref in preferences])
     
     q_cinemas = cinemas if cinemas else []
-    showtimes = Showtime.objects.filter(
+    showtime_qs = Showtime.objects.filter(
         cinema__in=q_cinemas,
         movie__in=desired_movies,
         datetime__date=target_date
-    ).select_related('movie', 'cinema').order_by('datetime')
+    )
+    # Hall criteria are applied per person below, because a person may override
+    # the group-wide halls/types and needs to see screenings the group excluded.
+    showtimes = showtime_qs.select_related('movie', 'cinema', 'hall').order_by('datetime')
     
     # Process breaks into datetime ranges
     processed_breaks = {}
@@ -55,6 +122,20 @@ def generate_schedule(persons: List[Person], target_date, cinemas: List[Any],
                 })
             except: continue
 
+    # Process availability bounds into datetimes (a person is at the cinema
+    # from 'start' and/or until 'end'); unusable bounds are ignored.
+    person_windows = {}
+    for p_name, window in (availability or {}).items():
+        if not isinstance(window, dict):
+            continue
+        start_dt = _day_bound(target_date, window.get('start'))
+        end_dt = _day_bound(target_date, window.get('end'))
+        if start_dt is None and end_dt is None:
+            continue
+        if start_dt and end_dt and end_dt <= start_dt:
+            continue
+        person_windows[p_name] = (start_dt, end_dt)
+
     # 3. Path Generation per Person
     person_top_paths = {}
     
@@ -63,10 +144,30 @@ def generate_schedule(persons: List[Person], target_date, cinemas: List[Any],
         if not p_pref:
             person_top_paths[p.name] = []
             continue
-            
-        interest_st = [st for st in showtimes if str(st.movie.id) in p_pref]
+
+        own = (person_criteria or {}).get(p.name) or {}
+        p_halls = own.get('halls') if 'halls' in own else hall_ids
+        p_types = own.get('types') if 'types' in own else hall_types
+
+        interest_st = [
+            st for st in showtimes
+            if str(st.movie.id) in p_pref and _hall_matches(st, p_halls, p_types)
+        ]
+        # A person can only attend a screening that fits inside the hours they
+        # are at the cinema (either bound may be unset).
+        window = person_windows.get(p.name)
+        if window:
+            start_dt, end_dt = window
+            interest_st = [
+                st for st in interest_st
+                if (start_dt is None or st.datetime >= start_dt)
+                and (end_dt is None
+                     or st.datetime + timedelta(minutes=st.movie.duration_minutes) <= end_dt)
+            ]
         must_sees = {int(mid) for mid, status in p_pref.items() if status == "must"}
         p_breaks = processed_breaks.get(p.name, [])
+        p_transit = dict(transit_times or {})
+        p_transit.update((person_transits or {}).get(p.name) or {})
         
         # State: (score, path_tuple, seen_movies, last_st)
         states = [(0, (), frozenset(), None)]
@@ -94,7 +195,7 @@ def generate_schedule(persons: List[Person], target_date, cinemas: List[Any],
                             # Try to find transit time
                             key1 = f"{last_st.cinema.id}-{st.cinema.id}"
                             key2 = f"{st.cinema.id}-{last_st.cinema.id}"
-                            transit_req = transit_times.get(key1, transit_times.get(key2, 30))
+                            transit_req = p_transit.get(key1, p_transit.get(key2, 30))
                         
                         required_gap = timedelta(minutes=transit_req)
                         if st_start < last_end + required_gap:
@@ -140,6 +241,10 @@ def generate_schedule(persons: List[Person], target_date, cinemas: List[Any],
         person_top_paths[p.name] = states[:20]
 
     # 4. Global Combination
+    must_by_person = {
+        name: {int(mid) for mid, status in prefs.items() if status == "must"}
+        for name, prefs in person_prefs.items() if isinstance(prefs, dict)
+    }
     combo_states = [(0, {})]
     for p in persons:
         candidates = person_top_paths.get(p.name, [])
@@ -158,10 +263,9 @@ def generate_schedule(persons: List[Person], target_date, cinemas: List[Any],
                     for st in p_path:
                         st_counts[st.id] = st_counts.get(st.id, 0) + 1
                 
-                social_score = sum((count - 1) * 20 for count in st_counts.values() if count > 1)
+                social_score = _social_score(st_counts)
                 base_score = sum(
-                    10000 * len(frozenset(st.movie.id for st in new_dict[n]).intersection({int(mid) for mid, status in person_prefs.get(n, {}).items() if status == "must"})) +
-                    100 * len(new_dict[n])
+                    _score_path(new_dict[n], must_by_person.get(n, set()))
                     for n in new_dict.keys()
                 )
                 new_combo_states.append((base_score + social_score, new_dict))
@@ -185,6 +289,10 @@ def generate_schedule(persons: List[Person], target_date, cinemas: List[Any],
                     "duration": st.movie.duration_minutes,
                     "movie": st.movie.title,
                     "cinema": st.cinema.name,
+                    "hall": st.hall.name if st.hall else None,
+                    # A format-named hall ("VIP") already states the type.
+                    "hall_type": (None if (not st.hall or st.hall.is_generic)
+                                  else st.hall.get_hall_type_display()),
                     "poster": st.movie.poster_url,
                     "attendees": [],
                     "type": "movie"

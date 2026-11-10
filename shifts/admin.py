@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Person, Movie, Cinema, Showtime, Preference
+from .models import Person, Movie, Cinema, Hall, Showtime, Preference
 
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
@@ -14,10 +14,16 @@ class MovieAdmin(admin.ModelAdmin):
 class CinemaAdmin(admin.ModelAdmin):
     list_display = ('name', 'url')
 
+@admin.register(Hall)
+class HallAdmin(admin.ModelAdmin):
+    list_display = ('name', 'cinema', 'hall_type')
+    list_filter = ('cinema', 'hall_type')
+    search_fields = ('name', 'cinema__name')
+
 @admin.register(Showtime)
 class ShowtimeAdmin(admin.ModelAdmin):
-    list_display = ('movie', 'cinema', 'datetime')
-    list_filter = ('cinema', 'movie', 'datetime')
+    list_display = ('movie', 'cinema', 'hall', 'datetime')
+    list_filter = ('cinema', 'hall', 'movie', 'datetime')
 
 @admin.register(Preference)
 class PreferenceAdmin(admin.ModelAdmin):

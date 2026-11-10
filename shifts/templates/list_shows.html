@@ -18,6 +18,20 @@
                 <option value="{{ c.id }}" {% if selected_cinema and selected_cinema.id == c.id %}selected{% endif %}>{{ c.name }}</option>
                 {% endfor %}
             </select>
+            <select name="type">
+                <option value="">All hall types</option>
+                {% for key, label in hall_type_labels.items %}
+                <option value="{{ key }}" {% if selected_hall_type == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            {% if halls %}
+            <select name="hall">
+                <option value="">All halls</option>
+                {% for h in halls %}
+                <option value="{{ h.id }}" {% if selected_hall_id == h.id|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
             <input type="date" name="date" value="{{ target_date|date:'Y-m-d' }}">
             <button type="submit" class="btn">Update List</button>
         </form>
@@ -42,14 +56,25 @@
                     </div>
                 </div>
                 <div class="showtime-list">
-                    {% for st in info.times %}
-                    <span class="showtime-pill">{{ st|date:"H:i" }}</span>
+                    {% for slot in info.times %}
+                    <span class="showtime-pill">
+                        {{ slot.time|date:"H:i" }}
+                        {% if slot.hall %}
+                        <span class="showtime-hall">{{ slot.hall }}{% if slot.hall_type %} · {{ slot.hall_type }}{% endif %}</span>
+                        {% endif %}
+                    </span>
                     {% endfor %}
                 </div>
             </div>
             {% endfor %}
         {% else %}
-            <p style="text-align: center; color: var(--text-muted);">No shows found for this date. Try another cinema or date.</p>
+            <p style="text-align: center; color: var(--text-muted);">
+                {% if selected_hall_id or selected_hall_type %}
+                No shows in the selected hall/type. Clear the filters or try another date.
+                {% else %}
+                No shows found for this date. Try another cinema or date.
+                {% endif %}
+            </p>
         {% endif %}
     </div>
 </body>
